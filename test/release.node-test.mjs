@@ -11,7 +11,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
-import { compareVersions, findSection, githubRepo, releaseDate, versionHeadings } from '../changelog.mjs';
+import { compareVersions, findSection, githubRepo, releaseDate, unwrapLines, versionHeadings } from '../changelog.mjs';
 
 const prepare = join(import.meta.dirname, '..', 'release-prepare.mjs');
 const notes = join(import.meta.dirname, '..', 'release-notes.mjs');
@@ -237,6 +237,11 @@ test('notes: prints the section for a tag, without the link definitions', () => 
   assert.equal(run(notes, dir, ['1.2.3']).stdout, '- Old.\n');
 });
 
+test('notes: joins wrapped lines', () => {
+  const dir = makeRepo({ changelog: `${HEADER}## [1.2.4]\n\n- An entry\n  wrapped.\n- 環境変数から\n  指定できる。トークンの\n  \`TOKEN\` と同じ。\n` });
+  assert.equal(run(notes, dir, ['v1.2.4']).stdout, '- An entry wrapped.\n- 環境変数から指定できる。トークンの `TOKEN` と同じ。\n');
+});
+
 test('notes: prints Unreleased for a pre-release tag', () => {
   const dir = makeRepo({ changelog: `${HEADER}## [Unreleased]\n\n- B.\n\n## [1.2.3]\n\n- Old.\n` });
   const r = run(notes, dir, ['v1.3.0-rc.1']);
@@ -263,6 +268,95 @@ test('findSection: a fence closes only on the same marker, at least as long', ()
     const text = `## [1.2.4]\n\n${fence}\n\n## [1.2.3]\n\n- Old.\n`;
     assert.equal(findSection(text, '1.2.4'), fence);
     assert.equal(findSection(text, '1.2.3'), '- Old.');
+  }
+});
+
+test('unwrapLines: joins paragraphs and list items, nothing else', () => {
+  const text = [
+    '### Fixed',
+    '',
+    'A paragraph',
+    'that wraps.',
+    '',
+    '- One',
+    '  more.',
+    '  - Nested',
+    '    item.',
+    '1. Numbered',
+    '   item.',
+    '',
+    '```sh',
+    'keep',
+    'these',
+    '```',
+    'after the fence',
+    'joins.',
+    '',
+    '| a | b |',
+    '|---|---|',
+    '> quote',
+    '> lines',
+    'hard break  ',
+    'stays.',
+    'backslash\\',
+    'stays.',
+    '日本語の',
+    '行。',
+    '「かぎ」',
+    'English',
+    '日本語',
+  ].join('\n');
+  assert.equal(
+    unwrapLines(text),
+    [
+      '### Fixed',
+      '',
+      'A paragraph that wraps.',
+      '',
+      '- One more.',
+      '  - Nested item.',
+      '1. Numbered item.',
+      '',
+      '```sh',
+      'keep',
+      'these',
+      '```',
+      'after the fence joins.',
+      '',
+      '| a | b |',
+      '|---|---|',
+      '> quote',
+      '> lines',
+      'hard break  ',
+      'stays. backslash\\',
+      'stays. 日本語の行。「かぎ」 English 日本語',
+    ].join('\n'),
+  );
+});
+
+test('unwrapLines: leaves breaks, underlines and tables alone', () => {
+  for (const [input, expected] of [
+    ['段落\n---\n次の段落', '段落\n---\n次の段落'],
+    ['Title\n=====\nnext', 'Title\n=====\nnext'],
+    ['a | b\n--- | ---\nc | d\n\nafter\nit', 'a | b\n--- | ---\nc | d\n\nafter it'],
+    ['- item\n  - nested\n\n    ```sh\n    echo a\n    echo b\n    ```', '- item\n  - nested\n\n    ```sh\n    echo a\n    echo b\n    ```'],
+    ['a\nb  \nc', 'a b  \nc'],
+    ['see\n<https://x>', 'see <https://x>'],
+    ['<details>\ntext', '<details>\ntext'],
+  ]) {
+    assert.equal(unwrapLines(input), expected, JSON.stringify(input));
+  }
+});
+
+test('unwrapLines: puts no space between Japanese characters', () => {
+  for (const [input, expected] of [
+    ['サーバー\nの設定', 'サーバーの設定'],
+    ['中黒・\nあ', '中黒・あ'],
+    ['あ\n𠮷野家', 'あ𠮷野家'],
+    ['（括弧）\nの後', '（括弧）の後'],
+    ['日本語の\n`code`', '日本語の `code`'],
+  ]) {
+    assert.equal(unwrapLines(input), expected, JSON.stringify(input));
   }
 });
 

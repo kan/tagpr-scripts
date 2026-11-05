@@ -35,6 +35,13 @@ one that brings its own version files and locks up to date in a wrapper of its o
   That section becomes the release notes word for word.
 - A section ends at the next `## ` heading, or at the block of link definitions
   (`[x]: url`) at the end of the file. Headings inside code fences are not headings.
+- Entries may be wrapped. `release-notes.mjs` joins the lines of a paragraph or a list
+  item into one, because GitHub shows every line break in release notes: with nothing
+  between two Japanese characters (kanji, kana, full-width), and with one space anywhere
+  else. Code fences, headings, tables, block quotes, HTML blocks, thematic breaks and hard
+  breaks (two trailing spaces or `\`) are left as they are. A wrapped line that starts with
+  a number and a period (`2026. ...`) is taken for the next numbered item and not joined, so
+  do not wrap there. Indented code blocks are not supported; use fences.
 - Links inside entries are written inline. A reference link's definition sits outside the
   section, so it would not be a link in the release notes.
 - Each release gets `[X.Y.Z]: https://github.com/<owner>/<repo>/releases/tag/vX.Y.Z` at
