@@ -86,10 +86,13 @@ release pull request whose tagpr run is red.**
 ## Using it
 
 ```bash
-git subtree add --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.git main --squash
+git subtree add -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.git main --squash
 ```
 
-`.tagpr`:
+**Pass `-S`.** `git subtree` makes its commits with `commit-tree`, which ignores
+`commit.gpgsign`, so without it they are left unsigned.
+
+`.tagpr` for an npm package:
 
 ```ini
 [tagpr]
@@ -115,12 +118,17 @@ and after `npm publish`, `gh release create "$TAG" --verify-tag --notes-file "$R
 [lily's workflows](https://github.com/kan/lily/tree/main/.github/workflows) are a complete
 example: `tagpr.yml` starts `publish.yml` with `workflow_dispatch` on the new tag.
 
+For a repository that keeps its version only in tags (Go, for example), set
+`versionFile = -` and `postVersionCommand = node scripts/tagpr/release-prepare.mjs --changelog-only`.
+[notify-slack's workflows](https://github.com/kan/notify-slack/tree/main/.github/workflows)
+are a complete example with GoReleaser.
+
 ## Changing it
 
 **Change this repository, never the copy in `scripts/tagpr/`.** Then, in each repository:
 
 ```bash
-git subtree pull --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.git main --squash
+git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.git main --squash
 ```
 
 **Merge that pull request with a merge commit, even in a repository that squashes
