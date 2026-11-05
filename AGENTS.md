@@ -87,7 +87,7 @@ node --test 'test/*.node-test.mjs'
   `npm ci` は無い。権限は `contents: read`
 - `.github/dependabot.yml`: 見るのは GitHub Actions だけ（月 1 回）
 - action は major のタグ（`@v7`）で指している。lockfile（`actions.lock`）へ移す案が
-  issue #1 にある（未着手）
+  issue #7 にある（未着手）
 - **`.github/` も取り込み先の `scripts/tagpr/.github/` に入る。** GitHub はルートの
   `.github/` しか読まないので、取り込み先では動かない。取り込み先と中身を揃えるために残している
 
@@ -123,19 +123,23 @@ git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.
   - 完成形の例は lily の `.github/workflows/`。`tagpr.yml` が `publish.yml` を、タグを ref にした
     `workflow_dispatch` で起動する
 
-## 今後の予定（issue #1）
+## 合流で決めたこと（issue #1、完了）
 
-roji / pike / musql / notify-slack / hokora の CHANGELOG の処理を、ここへ合流させている。
-issue を読まずに着手しない。
+roji / pike / musql / notify-slack / hokora の CHANGELOG の処理は、ここへ合流させた（経緯は
+issue #1）。`--changelog-only` が npm でない repo の入り口。
 
-- 済んだ手順: 合流の前提になる変更（CHANGELOG の処理と版・lock の処理を分ける、リンク先の
-  repo を `package.json` に頼らず決める）と、各 repo の置き換え（どこまで済んだかは issue #1 の
-  コメント）。`--changelog-only` が
-  npm でない repo の入り口
 - **CHANGELOG の形は lily の形に揃えると、ユーザーが決めた。** 空の `## [Unreleased]` を戻す、
   リンク定義は `releases/tag`、節はリンク定義のまとまりでも切る。repo ごとの違いをオプションで
   吸収しない。この形を変えるときは、先にユーザーの判断を仰ぐ
-- 進める順の案は issue #1 のコメントにある（更新されていくので、着手前に最新を読む）
-- workflow の共通化と、action を `actions.lock` で固定する件もこの issue で扱っている
 - **今の挙動（取り込み先が使っている形）は保つ。** npm の lock を揃える処理は
   `npm-lock.mjs` に残してあり、lily 系は `--changelog-only` を付けずに呼ぶ（`.tagpr` は変えない）
+
+## 残っている issue
+
+issue を読まずに着手しない。進める順はユーザーと決める。
+
+- #5: tagpr を v1.22.0 に上げる。上げると、取り込み先の復旧の手順が変わる（#5 のコメント）
+- #7: action の固定を `actions.lock` に揃える
+- #6: tagpr とリリースのワークフローを共通化し、権限を絞る
+- #4: 打たれなかったタグを、次の run で打ち直す
+- #3: リリース PR のラベルを付け外ししたら、自動で作り直す
