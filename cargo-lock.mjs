@@ -43,7 +43,9 @@ export function readPackage(text, path) {
 
 /**
  * `<dir>/Cargo.lock` の自分のパッケージの版を、tagpr が書き換えた `<dir>/Cargo.toml` の版に
- * 揃えた中身を返す。揃っていれば `null`。ファイルには書かない。**tagpr は `*.lock` を書き換えない。**
+ * 揃えた中身を返す。揃っていれば `null`。ファイルには書かない。**lock は tagpr に任せない**:
+ * tagpr は `*.lock` を自動では探さず、versionFile に書けば書き換えるが、今の版の最初の 1 か所だけ
+ * なので、同じ版の依存クレートの行に当たりうる。
  * @param {string} version tagpr が提案する版（`X.Y.Z`）
  * @param {string} dir Cargo.toml と Cargo.lock のあるディレクトリ（repo のルートからの相対パス）
  * @returns {{ path: string, text: string } | null}
