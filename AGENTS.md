@@ -86,8 +86,15 @@ node --test 'test/*.node-test.mjs'
 - `.github/workflows/test.yml`: main への push と PR でテストを回す。依存が無いので
   `npm ci` は無い。権限は `contents: read`
 - `.github/dependabot.yml`: 見るのは GitHub Actions だけ（月 1 回）
-- action は major のタグ（`@v7`）で指している。lockfile（`actions.lock`）へ移す案が
-  issue #7 にある（未着手）
+- `.github/workflows/verify-lockfile.yml`: `actions.lock` が `uses:` と食い違っていないか、
+  固定した commit を上流で検証できるかを、PR と main への push で確かめる
+- **action の固定は `.github/workflows/actions.lock`（`gh actions-lock` が作る）に任せる。**
+  `uses:` は完全な版のタグ（`@v7.0.1`）で書き、SHA は書かない。`uses:` を足したり変えたりしたら
+  `gh actions-lock` を再実行し、lockfile も同じコミットに入れる。lockfile は手で編集しない
+  - Dependabot は Actions の更新 PR で lockfile の該当行も作り直す
+  - 検査が入れる拡張の版（`verify-lockfile.yml` の `--pin`）は、Dependabot と lockfile のどちらも追わない。lockfile の
+    形式が上がって `--verify` が落ちたら、手元の `gh actions-lock` と同じ版に手で上げる
+  - 取り込み先（issue #7）も同じ形に揃える
 - **`.github/` も取り込み先の `scripts/tagpr/.github/` に入る。** GitHub はルートの
   `.github/` しか読まないので、取り込み先では動かない。取り込み先と中身を揃えるために残している
 
