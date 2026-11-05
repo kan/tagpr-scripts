@@ -92,6 +92,11 @@ git subtree add -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.g
 **Pass `-S`.** `git subtree` makes its commits with `commit-tree`, which ignores
 `commit.gpgsign`, so without it they are left unsigned.
 
+**Let GitHub Actions create pull requests** (Settings → Actions → General → "Allow GitHub
+Actions to create and approve pull requests", or `can_approve_pull_request_reviews` in the
+API). Without it, the first tagpr run fails with 403 "GitHub Actions is not permitted to
+create or approve pull requests". The default token permissions can stay read-only.
+
 `.tagpr` for an npm package:
 
 ```ini
