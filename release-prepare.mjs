@@ -24,6 +24,7 @@
  * 持つので、依存のコードを走らせない。
  */
 import { writeFileSync } from 'node:fs';
+import { relative } from 'node:path';
 import { ReleaseError, changelogPath, currentGithubRepo, readRootFile, releaseDate, stampRelease } from './changelog.mjs';
 import { lockPath, syncPackageLock } from './npm-lock.mjs';
 
@@ -41,7 +42,9 @@ try {
   const args = process.argv.slice(2);
   const unknown = args.filter((a) => a !== '--changelog-only');
   if (unknown.length > 0) {
-    throw new ReleaseError(`usage: node release-prepare.mjs [--changelog-only] (unknown: ${unknown.join(' ')})`);
+    // 取り込み先では repo のルートから見たパス（`scripts/tagpr/release-prepare.mjs`）になる
+    const self = relative(process.cwd(), import.meta.filename);
+    throw new ReleaseError(`usage: node ${self} [--changelog-only] (unknown: ${unknown.join(' ')})`);
   }
   const changelogOnly = args.includes('--changelog-only');
   const version = versionFromEnv('TAGPR_NEXT_VERSION');
