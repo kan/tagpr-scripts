@@ -94,7 +94,7 @@ node --test 'test/*.node-test.mjs'
   - Dependabot は Actions の更新 PR で lockfile の該当行も作り直す
   - 検査が入れる拡張の版（`verify-lockfile.yml` の `--pin`）は、Dependabot と lockfile のどちらも追わない。lockfile の
     形式が上がって `--verify` が落ちたら、手元の `gh actions-lock` と同じ版に手で上げる
-  - 取り込み先（issue #7）も同じ形に揃える
+  - 取り込み先もすべて同じ形にしてある（issue #7）
 - **`.github/` も取り込み先の `scripts/tagpr/.github/` に入る。** GitHub はルートの
   `.github/` しか読まないので、取り込み先では動かない。取り込み先と中身を揃えるために残している
 
@@ -146,7 +146,6 @@ issue #1）。`--changelog-only` が npm でない repo の入り口。
 issue を読まずに着手しない。進める順はユーザーと決める。
 
 - #5: tagpr を v1.22.0 に上げる。上げると、取り込み先の復旧の手順が変わる（#5 のコメント）
-- #7: action の固定を `actions.lock` に揃える
 - #6: tagpr とリリースのワークフローを共通化し、権限を絞る
 - #4: 打たれなかったタグを、次の run で打ち直す
 - #3: リリース PR のラベルを付け外ししたら、自動で作り直す
