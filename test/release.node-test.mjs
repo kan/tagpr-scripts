@@ -25,15 +25,25 @@ after(() => {
   for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
 });
 
-function makeRepo({
-  version = '1.2.4',
-  repository = { type: 'git', url: 'git+https://github.com/o/r.git' },
-  changelog = MINIMAL,
-  lock = true,
-} = {}) {
+/**
+ * 外の repo を触らない環境。git のフックから走らせると `GIT_DIR` などを引き継ぐので消し、
+ * 一時ディレクトリより上の repo を見に行かないよう `GIT_CEILING_DIRECTORIES` で止める
+ */
+function gitEnv() {
+  const env = { ...process.env, GIT_CEILING_DIRECTORIES: tmpdir() };
+  for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR']) delete env[name];
+  return env;
+}
+
+function makeRepo({ version = '1.2.4', changelog = MINIMAL, pkg = true, lock = true, origin = null } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'tagpr-scripts-'));
   dirs.push(dir);
-  writeFileSync(join(dir, 'package.json'), `${JSON.stringify({ name: 'x', version, repository }, null, 2)}\n`);
+  if (pkg) writeFileSync(join(dir, 'package.json'), `${JSON.stringify({ name: 'x', version }, null, 2)}\n`);
+  if (origin !== null) {
+    for (const args of [['init', '-q'], ['remote', 'add', 'origin', origin]]) {
+      assert.equal(spawnSync('git', args, { cwd: dir, env: gitEnv() }).status, 0, `git ${args.join(' ')}`);
+    }
+  }
   if (lock) {
     const content = { name: 'x', version: '1.2.3', lockfileVersion: 3, packages: { '': { name: 'x', version: '1.2.3' } } };
     writeFileSync(join(dir, 'package-lock.json'), `${JSON.stringify(content, null, 2)}\n`);
@@ -42,13 +52,19 @@ function makeRepo({
   return dir;
 }
 
-// tagpr と同じく、最新のタグ（current）と提案する版（next）を渡す
-const run = (script, cwd, args = [], next = 'v1.2.4', current = 'v1.2.3') =>
-  spawnSync(process.execPath, [script, ...args], {
-    cwd,
-    env: { ...process.env, TAGPR_NEXT_VERSION: next, TAGPR_CURRENT_VERSION: current },
-    encoding: 'utf8',
-  });
+/**
+ * tagpr と同じく、最新のタグ（current）と提案する版（next）を渡す。Actions の中として
+ * `GITHUB_ACTIONS=true` と `GITHUB_REPOSITORY=o/r` を渡す。`actions: false` で Actions の外に、
+ * `repository: null` で `GITHUB_REPOSITORY` を消す（どちらも `origin` から決めさせる）
+ */
+function run(script, cwd, args = [], { next = 'v1.2.4', current = 'v1.2.3', repository = 'o/r', actions = true } = {}) {
+  const env = { ...gitEnv(), TAGPR_NEXT_VERSION: next, TAGPR_CURRENT_VERSION: current };
+  if (actions) env.GITHUB_ACTIONS = 'true';
+  else delete env.GITHUB_ACTIONS;
+  if (repository === null) delete env.GITHUB_REPOSITORY;
+  else env.GITHUB_REPOSITORY = repository;
+  return spawnSync(process.execPath, [script, ...args], { cwd, env, encoding: 'utf8' });
+}
 
 const read = (dir, name) => readFileSync(join(dir, name), 'utf8');
 const lockVersions = (dir) => {
@@ -60,9 +76,9 @@ const lockVersions = (dir) => {
  * prepare を走らせ、見出しの日付を `<date>` にした CHANGELOG を返す。日付は実行の前後
  * どちらかの日であること（日付をまたいでも落ちない）
  */
-function prepareAndRead(dir) {
+function prepareAndRead(dir, args = [], opts = {}) {
   const before = releaseDate();
-  const r = run(prepare, dir);
+  const r = run(prepare, dir, args, opts);
   const after = releaseDate();
   assert.equal(r.status, 0, r.stderr);
   const text = read(dir, 'CHANGELOG.md');
@@ -103,8 +119,41 @@ test('prepare: leaves headings and link definitions inside code fences alone', (
   assert.equal(prepareAndRead(dir), `${HEADER}## [Unreleased]\n\n## [1.2.4] - <date>\n\n- A.\n\n${fence}\n${LINK}\n`);
 });
 
+test('prepare: takes the repository from origin without GITHUB_REPOSITORY', () => {
+  const dir = makeRepo({ origin: 'git@github.com:a/b.git' });
+  assert.equal(
+    prepareAndRead(dir, [], { repository: null }),
+    `${HEADER}## [Unreleased]\n\n## [1.2.4] - <date>\n\n- A.\n\n[1.2.4]: https://github.com/a/b/releases/tag/v1.2.4\n`,
+  );
+});
+
+test('prepare: ignores GITHUB_REPOSITORY outside GitHub Actions', () => {
+  // 手元のシェルに別の repo の値が残っていても、origin を使う
+  const dir = makeRepo({ origin: 'https://github.com/a/b.git' });
+  assert.match(prepareAndRead(dir, [], { repository: 'other/repo', actions: false }), /^\[1\.2\.4\]: https:\/\/github\.com\/a\/b\//m);
+});
+
+test('prepare: does not print the credentials in origin', () => {
+  const dir = makeRepo({ origin: 'https://oauth2:secret-token@gitlab.com/o/r.git' });
+  const r = run(prepare, dir, [], { repository: null });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /origin is https:\/\/\*\*\*@gitlab\.com\/o\/r\.git/);
+  assert.doesNotMatch(r.stderr, /secret-token/);
+});
+
+test('prepare: --changelog-only needs no package.json or lock', () => {
+  const dir = makeRepo({ pkg: false, lock: false });
+  assert.equal(prepareAndRead(dir, ['--changelog-only']), `${HEADER}## [Unreleased]\n\n## [1.2.4] - <date>\n\n- A.\n\n${LINK}\n`);
+});
+
+test('prepare: --changelog-only leaves package-lock.json alone', () => {
+  const dir = makeRepo({ version: '9.9.9' });
+  prepareAndRead(dir, ['--changelog-only']);
+  assert.deepEqual(lockVersions(dir), ['1.2.3', '1.2.3']);
+});
+
 // package-lock.json と CHANGELOG.md は、どの失敗でも書き換えない
-for (const { name, opts, message, next, current } of [
+for (const { name, opts, message, args, next, current, repository } of [
   { name: 'an empty Unreleased', opts: { changelog: `${HEADER}## [Unreleased]\n\n## [1.2.3]\n\n- Old.\n` }, message: /is empty/ },
   { name: 'no Unreleased', opts: { changelog: `${HEADER}## [1.2.3]\n\n- Old.\n` }, message: /no "## \[Unreleased\]"/ },
   { name: 'two Unreleased sections', opts: { changelog: `${MINIMAL}\n## [Unreleased]\n\n- B.\n` }, message: /2 "## \[Unreleased\]" sections/ },
@@ -136,14 +185,21 @@ for (const { name, opts, message, next, current } of [
   { name: 'a TAGPR_CURRENT_VERSION that is not vX.Y.Z', opts: {}, message: /TAGPR_CURRENT_VERSION must be vX\.Y\.Z/, current: '' },
   { name: 'CRLF line endings', opts: { changelog: MINIMAL.replaceAll('\n', '\r\n') }, message: /CR line endings/ },
   { name: 'package.json at another version', opts: { version: '1.2.5' }, message: /package\.json says 1\.2\.5/ },
-  { name: 'a non-GitHub repository', opts: { repository: 'https://gitlab.com/o/r' }, message: /must point at a GitHub repository/ },
-  { name: 'no repository', opts: { repository: null }, message: /must point at a GitHub repository/ },
+  { name: 'a GITHUB_REPOSITORY that is not owner/repo', opts: {}, message: /GITHUB_REPOSITORY must be owner\/repo/, repository: 'https://github.com/o/r' },
+  {
+    name: 'an origin that is not GitHub',
+    opts: { origin: 'https://gitlab.com/o/r.git' },
+    message: /Cannot tell the GitHub repository.*origin is https:\/\/gitlab\.com\/o\/r\.git/,
+    repository: null,
+  },
+  { name: 'neither GITHUB_REPOSITORY nor a git repository', opts: {}, message: /Cannot tell the GitHub repository/, repository: null },
+  { name: 'an unknown option', opts: {}, message: /usage: .*unknown: --npm/, args: ['--npm'] },
   { name: 'a TAGPR_NEXT_VERSION that is not vX.Y.Z', opts: {}, message: /must be vX\.Y\.Z/, next: 'v1.2' },
 ]) {
   test(`prepare: fails on ${name} and writes nothing`, () => {
     const dir = makeRepo(opts);
     const changelog = read(dir, 'CHANGELOG.md');
-    const r = run(prepare, dir, [], next, current);
+    const r = run(prepare, dir, args, { next, current, repository });
     assert.equal(r.status, 1);
     assert.match(r.stderr, message);
     assert.equal(read(dir, 'CHANGELOG.md'), changelog);
@@ -154,7 +210,7 @@ for (const { name, opts, message, next, current } of [
 test('prepare: skips the untagged check when there are no tags yet', () => {
   // タグを打たずにリリースしてきた repo。tagpr は v0.0.0 を渡す
   const dir = makeRepo({ changelog: `${HEADER}## [Unreleased]\n\n- A.\n\n## [1.0.0]\n\n- Old.\n` });
-  const r = run(prepare, dir, [], 'v1.2.4', 'v0.0.0');
+  const r = run(prepare, dir, [], { current: 'v0.0.0' });
   assert.equal(r.status, 0, r.stderr);
   assert.match(read(dir, 'CHANGELOG.md'), /^## \[1\.2\.4\] - /m);
 });
@@ -216,26 +272,26 @@ test('compareVersions: compares each part as a number', () => {
   assert.equal(compareVersions('1.2.3', '1.2.3'), 0);
 });
 
-test('githubRepo: takes the forms npm accepts for GitHub', () => {
-  for (const spec of [
-    'o/r',
-    'github:o/r',
+test('githubRepo: takes the remote URLs git uses for GitHub', () => {
+  for (const remote of [
     'git@github.com:o/r.git',
+    'git@github.com:o/r',
+    'org-123@github.com:o/r.git',
+    'github.com:o/r.git',
     'https://github.com/o/r',
+    'https://github.com/o/r.git',
     'http://www.github.com/o/r/',
-    'git+https://github.com/o/r.git',
-    'git+ssh://git@github.com/o/r.git',
     'ssh://git@github.com/o/r.git',
     'git://github.com/o/r.git',
-    { type: 'git', url: 'https://github.com/o/r.git' },
   ]) {
-    assert.equal(githubRepo(spec), 'o/r', JSON.stringify(spec));
+    assert.equal(githubRepo(remote), 'o/r', remote);
   }
 });
 
 test('githubRepo: rejects anything that is not GitHub', () => {
-  for (const spec of ['bitbucket.org/foo', 'gitlab:o/r', 'https://gitlab.com/o/r', 'https://github.com/o', '', null, undefined, {}]) {
-    assert.equal(githubRepo(spec), null, JSON.stringify(spec));
+  // `o/r` は remote としてはローカルのパス
+  for (const remote of ['o/r', 'bitbucket.org/foo', 'git@gitlab.com:o/r.git', 'git@github-work:o/r.git', 'https://gitlab.com/o/r', 'https://github.com/o', '']) {
+    assert.equal(githubRepo(remote), null, remote);
   }
 });
 

@@ -9,14 +9,16 @@
 
 [tagpr](https://github.com/Songmu/tagpr) で、手書きの `CHANGELOG.md` を持つ npm パッケージを
 リリースするためのスクリプト。lily / wema / wema-kake が共有している（各 repo の
-`scripts/release-*.mjs` を 1 つにまとめたもの）。
+`scripts/release-*.mjs` を 1 つにまとめたもの）。npm でない repo も
+`release-prepare.mjs --changelog-only` で CHANGELOG の処理だけを使える（取り込み先はまだ無い）。
 
 | ファイル | 呼ぶもの | 役割 |
 |---|---|---|
-| `release-prepare.mjs` | tagpr（`.tagpr` の `postVersionCommand`） | `## [Unreleased]` を `## [X.Y.Z] - <JST の日付>` にし、空の `## [Unreleased]` を置き直し、末尾のリンク定義の先頭にその版のリンクを足す。`package-lock.json` の版を `package.json` に揃える |
+| `release-prepare.mjs` | tagpr（`.tagpr` の `postVersionCommand`） | `## [Unreleased]` を `## [X.Y.Z] - <JST の日付>` にし、空の `## [Unreleased]` を置き直し、末尾のリンク定義の先頭にその版のリンクを足す。`package-lock.json` の版を `package.json` に揃える（`--changelog-only` では揃えない） |
 | `release-notes.mjs` | 取り込み先の publish のワークフロー | CHANGELOG の 1 つの節の本文を出す。publish 前の存在確認と、GitHub Release の本文に使う |
-| `changelog.mjs` | 上の 2 つが import する | CHANGELOG の読み方（節の見出し、コードフェンス、末尾のリンク定義）と、日付・repo 名の決め方。何も実行しない |
-| `test/release.node-test.mjs` | `node --test` | 上の 3 つのテスト |
+| `changelog.mjs` | 上の 2 つが import する | CHANGELOG の読み方（節の見出し、コードフェンス、末尾のリンク定義）と書き換え方（`stampRelease`）、日付・repo 名の決め方。import しても何も実行しない。npm に依存しない |
+| `npm-lock.mjs` | `release-prepare.mjs` が import する | `package.json` の版の確認と、`package-lock.json` の版を揃えた中身を作る。書くのは呼んだ側 |
+| `test/release.node-test.mjs` | `node --test` | 上の 4 つのテスト |
 
 package.json は無い。依存も無い。
 
@@ -50,7 +52,12 @@ package.json は無い。依存も無い。
   場所（`scripts/tagpr/`）からの相対パスで読まない
 - **日付は日本時間。** `releaseDate` は +9 時間して `toISOString` で作る。`Intl` の既定の
   書式は ICU の版で変わりうるので使わない
-- **リンク先の repo は `package.json` の `repository` から決める**（`githubRepo`）。GitHub 以外は落とす
+- **CHANGELOG の処理（`changelog.mjs`）に npm の前提を持ち込まない。** `package.json` /
+  `package-lock.json` を読むのは `npm-lock.mjs` だけ。Go や Tauri の repo が
+  `--changelog-only` で使うため（issue #1）
+- **リンク先の repo は、Actions（`GITHUB_ACTIONS=true`）では `GITHUB_REPOSITORY`、それ以外では
+  `origin` の URL から決める**（`currentGithubRepo`）。`package.json` の `repository` は読まない。
+  GitHub 以外は落とす。エラーに remote の URL を出すときは認証情報を伏せる
 - 改行は LF だけを受ける。CR があれば落とす
 - 取り込み先の Node は 24（CI も 24 で回している）。それより新しい機能を使わない
 
@@ -106,14 +113,14 @@ git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.
 ## 今後の予定（issue #1）
 
 roji / pike / musql / notify-slack / hokora の CHANGELOG の処理を、ここへ合流させる案を
-調べてある。**調べただけで、方針はまだ決まっていない。** issue を読まずに着手しない。
+調べてある。**repo ごとの違いをどう揃えるかの方針は、まだ決まっていない。** issue を読まずに着手しない。
 
-- 合流の前提になる変更: CHANGELOG の処理と、版・lock の処理を分ける。リンク先の repo を
-  `package.json` に頼らず `GITHUB_REPOSITORY` か `git remote` から決める
+- 合流の前提になる変更（CHANGELOG の処理と版・lock の処理を分ける、リンク先の repo を
+  `package.json` に頼らず決める）は済んだ。`--changelog-only` が npm でない repo の入り口
 - **repo ごとに方針が割れている。** 空の `## [Unreleased]` を戻すか、リンク定義を
   `releases/tag` / `compare` / 付けない のどれにするか、節をリンク定義で切るか。
   揃えるかオプションで吸収するかはユーザーが決める。勝手に片方へ寄せない
 - 進める順の案は issue #1 のコメントにある（更新されていくので、着手前に最新を読む）
 - workflow の共通化と、action を `actions.lock` で固定する件もこの issue で扱っている
-- **今の挙動（lily / wema / wema-kake が使っている形）は保つ。** 分けた後も、npm の lock を
-  揃える処理はここに残し、lily 系はそれを呼ぶ
+- **今の挙動（lily / wema / wema-kake が使っている形）は保つ。** npm の lock を揃える処理は
+  `npm-lock.mjs` に残してあり、lily 系は `--changelog-only` を付けずに呼ぶ（`.tagpr` は変えない）

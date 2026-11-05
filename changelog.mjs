@@ -1,6 +1,7 @@
 /**
- * **`CHANGELOG.md` の読み方と、2 つのスクリプトが共有する決め方。** ここは何も実行しない
- * （`release-notes.mjs` と `release-prepare.mjs` が import する）。
+ * **`CHANGELOG.md` の読み方と書き換え方、2 つのスクリプトが共有する決め方。** import しても
+ * 何も実行しない（`release-notes.mjs` と `release-prepare.mjs` が import する）。
+ * **npm に依存しない**（`package.json` を読まない）。npm の版と lock は `npm-lock.mjs`。
  *
  * **読み方はここにしか書かない。** 2 か所に書くと、リリース PR は通るのに publish の
  * 検査で落ちる。
@@ -10,6 +11,7 @@
  *   終わる。** 項目の中にある `[x]: ...` の形の行では終わらない
  * - 改行は LF だけ
  */
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 /** 作業ディレクトリ（repo のルート）からの相対パス */
@@ -31,7 +33,7 @@ export function readRootFile(name) {
 }
 
 const isLinkDefinition = (line) => /^\[[^\]]+\]: /.test(line);
-export const isSectionHeading = (line, name) =>
+const isSectionHeading = (line, name) =>
   line === `## [${name}]` || line.startsWith(`## [${name}] `);
 
 // CommonMark のフェンス: 字下げ 3 文字まで、同じ記号 3 つ以上。閉じるのは開いたときと
@@ -44,7 +46,7 @@ const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
  * @param {string} text
  * @returns {[string, boolean][]}
  */
-export function scan(text) {
+function scan(text) {
   if (text.includes('\r')) {
     throw new ReleaseError('CHANGELOG.md has CR line endings; save it with LF');
   }
@@ -72,7 +74,7 @@ export function scan(text) {
  * ファイル末尾のリンク定義のまとまりの、最初の定義の行番号。無ければ `rows.length`。
  * @param {[string, boolean][]} rows `scan` の結果
  */
-export function linkBlockStart(rows) {
+function linkBlockStart(rows) {
   let start = rows.length;
   for (let i = rows.length - 1; i >= 0; i--) {
     const [line, fenced] = rows[i];
@@ -159,33 +161,146 @@ export function readSection(text, name) {
 }
 
 /**
+ * **リリースの節を作る**（`release-prepare.mjs` の CHANGELOG の側）。書き換えた中身を返し、
+ * ファイルには書かない。要求を満たさなければ `ReleaseError` を投げる。
+ *
+ * `## [Unreleased]` を `## [version] - <date>` にし、その上に空の `## [Unreleased]` を
+ * 置き直し、末尾のリンク定義の先頭に `[version]: https://github.com/<repo>/releases/tag/v<version>`
+ * を足す。
+ * @param {string} text CHANGELOG.md の中身
+ * @param {{ version: string, current: string, repo: string, date: string }} release
+ *   `version` は提案する版、`current` は最新のタグの版（どちらも `X.Y.Z`）、`repo` は `owner/repo`
+ * @returns {string}
+ */
+export function stampRelease(text, { version, current, repo, date }) {
+  // **最新のタグより新しい版の節があれば落とす。** tagpr はリリース PR のブランチを毎回
+  // main から作り直すので、その節があるのは、main にリリース PR が入ったのにタグが
+  // 打たれていないとき（タグを打ち直すために消している間も同じ）。
+  //
+  // 提案する版の節だけを見ると、間に `enhancement` の PR が入ったときに通ってしまう。
+  // tagpr は最新のタグから数えるので、0.17.1 のタグが無いまま minor の 0.18.0 を提案し、
+  // 「タグの無い 0.17.1 の上に 0.18.0 を積んだ」リリース PR が緑のまま作られる。
+  //
+  // タグが 1 つも無いと tagpr は `v0.0.0` を渡す。そのときは比べる相手が無いので見ない
+  // （タグを打たずにリリースしてきた repo が tagpr へ移ると、古い節がすべて引っかかる）。
+  const untagged =
+    current === '0.0.0'
+      ? []
+      : versionHeadings(text)
+          .filter((v) => compareVersions(v, current) > 0)
+          .sort(compareVersions);
+  if (untagged.length > 0) {
+    // 古い順にすべて出す。新しい方だけ直すと、古い方はそのタグより古くなって見えなくなる
+    const sections = untagged.map((v) => `"## [${v}]"`).join(', ');
+    throw new ReleaseError(
+      `CHANGELOG.md already has ${sections}, newer than the latest tag v${current}: ` +
+        'a release pull request was merged but not tagged. ' +
+        `Re-run the tagpr run of the merge commit for ${untagged[0]} first (or push the tag again) ` +
+        'instead of merging a new release pull request',
+    );
+  }
+  // 無いか空なら、ここで理由を出して落ちる
+  readSection(text, 'Unreleased');
+
+  const rows = scan(text);
+  const linkAt = linkBlockStart(rows);
+  const link = `[${version}]: https://github.com/${repo}/releases/tag/v${version}`;
+  const out = [];
+  rows.forEach(([line, fenced], i) => {
+    if (i === linkAt) out.push(link);
+    out.push(line);
+    if (!fenced && isSectionHeading(line, 'Unreleased')) out.push('', `## [${version}] - ${date}`);
+  });
+  if (linkAt === rows.length) {
+    // 末尾の改行の手前に置く
+    while (out.length > 0 && out[out.length - 1] === '') out.pop();
+    out.push('', link, '');
+  }
+  return out.join('\n');
+}
+
+/**
  * 見出しに書く日付。日本時間の `YYYY-MM-DD`。JST に夏時間は無いので +9 時間で足りる
  * （`Intl` の既定の書式は ICU の版で変わりうるので使わない）
  */
 export const releaseDate = (now = new Date()) =>
   new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-const NAME = String.raw`([A-Za-z0-9-]+\/[\w.-]+?)(?:\.git)?\/?`;
+const OWNER_REPO = String.raw`[A-Za-z0-9-]+\/[\w.-]+`;
+// 末尾の `+?` で repo 名を最短にし、`.git` と末尾の `/` を名前に含めない
+// （`OWNER_REPO` が `+` で終わることに頼っている）
+const NAME = String.raw`(${OWNER_REPO}?)(?:\.git)?\/?`;
 
 /**
- * `package.json` の `repository` から GitHub の `owner/repo` を取り出す。GitHub でなければ `null`。
- * 受けるのは npm の短縮形（`o/r` / `github:o/r`）、scp 形式（`git@github.com:o/r.git`）、
- * host が github.com の URL（`git+https:` / `git+ssh:` / `ssh:` / `git:` / `http(s):`）
- * @param {unknown} repository
+ * git の remote の URL から GitHub の `owner/repo` を取り出す。GitHub でなければ `null`。
+ * 受けるのは scp 形式（`git@github.com:o/r.git`）と、host が github.com の URL
+ * （`https:` / `http:` / `ssh:` / `git:`）。ユーザー名は問わない。SSH の host の別名
+ * （`github-work:o/r`）は GitHub か判定できないので受けない
+ * @param {string} remote
  * @returns {string | null}
  */
-export function githubRepo(repository) {
-  const spec = typeof repository === 'string' ? repository : repository?.url;
-  if (typeof spec !== 'string') return null;
-  // owner にドットは入らないので、`bitbucket.org/x` は短縮形にならない
-  const short = new RegExp(`^(?:github:)?${NAME}$`).exec(spec) ?? new RegExp(`^git@github\\.com:${NAME}$`).exec(spec);
-  if (short) return short[1];
+export function githubRepo(remote) {
+  const scp = new RegExp(`^(?:[^@/:]+@)?github\\.com:${NAME}$`).exec(remote);
+  if (scp) return scp[1];
   let url;
   try {
-    url = new URL(spec.replace(/^git\+/, ''));
+    url = new URL(remote);
   } catch {
     return null;
   }
   if (!/^(www\.)?github\.com$/.test(url.hostname)) return null;
   return new RegExp(`^/${NAME}$`).exec(url.pathname)?.[1] ?? null;
+}
+
+/** エラーに出す remote。URL に埋め込んだ認証情報（`https://user:token@...`）を伏せる */
+function redactRemote(remote) {
+  try {
+    const url = new URL(remote);
+    if (url.username || url.password) {
+      url.username = '***';
+      url.password = '';
+    }
+    return url.href;
+  } catch {
+    // scp 形式（`user@host:path`）。パスワードは書けない
+    return remote;
+  }
+}
+
+/**
+ * リンク先の repo（`owner/repo`）を決める。Actions では `GITHUB_REPOSITORY`、それ以外では
+ * 作業ディレクトリの `origin` の URL から。**`package.json` には頼らない**（npm 以外の
+ * repo でも使うため）。決められなければ `ReleaseError`。
+ *
+ * `GITHUB_REPOSITORY` は `GITHUB_ACTIONS=true` のときだけ読む。手元のシェルに別の repo の
+ * 値が残っていると、黙ってその repo へのリンクを書いてしまうため。
+ * @param {NodeJS.ProcessEnv} env
+ * @returns {string}
+ */
+export function currentGithubRepo(env = process.env) {
+  const fromEnv = env.GITHUB_ACTIONS === 'true' ? env.GITHUB_REPOSITORY : undefined;
+  if (fromEnv) {
+    if (!new RegExp(`^${OWNER_REPO}$`).test(fromEnv)) {
+      throw new ReleaseError(`GITHUB_REPOSITORY must be owner/repo, got "${fromEnv}"`);
+    }
+    return fromEnv;
+  }
+  let remote = '';
+  try {
+    remote = execFileSync('git', ['remote', 'get-url', 'origin'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    // git が無い、repo の外、origin が無い。どれも下で同じように落とす
+  }
+  const repo = githubRepo(remote);
+  if (!repo) {
+    const got = remote ? `, but origin is ${redactRemote(remote)}` : '';
+    throw new ReleaseError(
+      'Cannot tell the GitHub repository for the CHANGELOG links: ' +
+        `run this in GitHub Actions (GITHUB_REPOSITORY) or in a clone whose origin is on GitHub${got}`,
+    );
+  }
+  return repo;
 }
