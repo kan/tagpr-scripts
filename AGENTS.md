@@ -10,7 +10,7 @@
 [tagpr](https://github.com/Songmu/tagpr) で、手書きの `CHANGELOG.md` を持つ npm パッケージを
 リリースするためのスクリプト。lily / wema / wema-kake が共有している（各 repo の
 `scripts/release-*.mjs` を 1 つにまとめたもの）。npm でない repo も
-`release-prepare.mjs --changelog-only` で CHANGELOG の処理だけを使える（取り込み先はまだ無い）。
+`release-prepare.mjs --changelog-only` で CHANGELOG の処理だけを使える（roji が使っている）。
 
 | ファイル | 呼ぶもの | 役割 |
 |---|---|---|
@@ -107,7 +107,8 @@ git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.
 - **その PR はマージコミットで入れる。** squash で入れる repo でも同じ。subtree は前回の
   取り込みを自分が作ったコミットから探すので、squash すると次の pull が壊れる
 - 取り込む PR は取り込み先の CHANGELOG に書かない（利用者に届かない）
-- 取り込み先: lily / wema / wema-kake。完成形の例は lily の `.github/workflows/`
+- 取り込み先: lily / wema / wema-kake / roji。roji は `--changelog-only` を自分のラッパー
+  （`scripts/release-prepare.sh`。CREDITS を置き換える）から呼ぶ。完成形の例は lily の `.github/workflows/`
   （`tagpr.yml` が `publish.yml` をタグを ref にした `workflow_dispatch` で起動する）
 
 ## 今後の予定（issue #1）
@@ -115,12 +116,13 @@ git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.
 roji / pike / musql / notify-slack / hokora の CHANGELOG の処理を、ここへ合流させる案を
 調べてある。**repo ごとの違いをどう揃えるかの方針は、まだ決まっていない。** issue を読まずに着手しない。
 
-- 合流の前提になる変更（CHANGELOG の処理と版・lock の処理を分ける、リンク先の repo を
-  `package.json` に頼らず決める）は済んだ。`--changelog-only` が npm でない repo の入り口
+- 済んだ手順: 合流の前提になる変更（CHANGELOG の処理と版・lock の処理を分ける、リンク先の
+  repo を `package.json` に頼らず決める）と、roji の bash の置き換え。`--changelog-only` が
+  npm でない repo の入り口
 - **repo ごとに方針が割れている。** 空の `## [Unreleased]` を戻すか、リンク定義を
   `releases/tag` / `compare` / 付けない のどれにするか、節をリンク定義で切るか。
   揃えるかオプションで吸収するかはユーザーが決める。勝手に片方へ寄せない
 - 進める順の案は issue #1 のコメントにある（更新されていくので、着手前に最新を読む）
 - workflow の共通化と、action を `actions.lock` で固定する件もこの issue で扱っている
-- **今の挙動（lily / wema / wema-kake が使っている形）は保つ。** npm の lock を揃える処理は
+- **今の挙動（lily / wema / wema-kake / roji が使っている形）は保つ。** npm の lock を揃える処理は
   `npm-lock.mjs` に残してあり、lily 系は `--changelog-only` を付けずに呼ぶ（`.tagpr` は変えない）

@@ -4,6 +4,8 @@ The scripts that let [tagpr](https://github.com/Songmu/tagpr) release an npm pac
 `CHANGELOG.md` is written by hand. Shared by [lily](https://github.com/kan/lily),
 [wema](https://github.com/kan/wema) and [wema-kake](https://github.com/kan/wema-kake),
 which pull this repository in with `git subtree` at `scripts/tagpr/`.
+[roji](https://github.com/kan/roji), a Go project with no version file, uses only the
+CHANGELOG part (`--changelog-only`).
 
 | File | Run by | Does |
 |---|---|---|
