@@ -10,7 +10,8 @@
 [tagpr](https://github.com/Songmu/tagpr) で、手書きの `CHANGELOG.md` を持つ npm パッケージを
 リリースするためのスクリプト。lily / wema / wema-kake が共有している（各 repo の
 `scripts/release-*.mjs` を 1 つにまとめたもの）。npm でない repo も
-`release-prepare.mjs --changelog-only` で CHANGELOG の処理だけを使える（roji が使っている）。
+`release-prepare.mjs --changelog-only` で CHANGELOG の処理だけを使える（Go の roji / notify-slack /
+hokora と、Tauri の pike / musql が使っている）。
 
 | ファイル | 呼ぶもの | 役割 |
 |---|---|---|
@@ -107,22 +108,29 @@ git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.
 - **その PR はマージコミットで入れる。** squash で入れる repo でも同じ。subtree は前回の
   取り込みを自分が作ったコミットから探すので、squash すると次の pull が壊れる
 - 取り込む PR は取り込み先の CHANGELOG に書かない（利用者に届かない）
-- 取り込み先: lily / wema / wema-kake / roji。roji は `--changelog-only` を自分のラッパー
-  （`scripts/release-prepare.sh`。CREDITS を置き換える）から呼ぶ。完成形の例は lily の `.github/workflows/`
-  （`tagpr.yml` が `publish.yml` をタグを ref にした `workflow_dispatch` で起動する）
+- 取り込み先: lily / wema / wema-kake（npm）、roji / notify-slack / hokora（Go）、
+  pike / musql（Tauri）。npm 以外は `--changelog-only` で呼ぶ
+  - roji は自分のラッパー（`scripts/release-prepare.sh`。CREDITS を置き換える）から呼ぶ
+  - notify-slack と hokora は `.tagpr` の `postVersionCommand` から直接呼ぶ。hokora は tagpr の後の
+    ジョブで `sdk/vX.Y.Z` のタグも同じコミットに打つ
+  - pike と musql は `scripts/release-prepare.mjs` のラッパーから、CHANGELOG → 版の書き換え →
+    クレジットの順で呼ぶ。`release-notes.mjs` もラッパーから呼ぶ
+  - 完成形の例は lily の `.github/workflows/`。`tagpr.yml` が `publish.yml` を、タグを ref にした
+    `workflow_dispatch` で起動する
 
 ## 今後の予定（issue #1）
 
-roji / pike / musql / notify-slack / hokora の CHANGELOG の処理を、ここへ合流させる案を
-調べてある。**repo ごとの違いをどう揃えるかの方針は、まだ決まっていない。** issue を読まずに着手しない。
+roji / pike / musql / notify-slack / hokora の CHANGELOG の処理を、ここへ合流させている。
+issue を読まずに着手しない。
 
 - 済んだ手順: 合流の前提になる変更（CHANGELOG の処理と版・lock の処理を分ける、リンク先の
-  repo を `package.json` に頼らず決める）と、roji の bash の置き換え。`--changelog-only` が
+  repo を `package.json` に頼らず決める）と、各 repo の置き換え（どこまで済んだかは issue #1 の
+  コメント）。`--changelog-only` が
   npm でない repo の入り口
-- **repo ごとに方針が割れている。** 空の `## [Unreleased]` を戻すか、リンク定義を
-  `releases/tag` / `compare` / 付けない のどれにするか、節をリンク定義で切るか。
-  揃えるかオプションで吸収するかはユーザーが決める。勝手に片方へ寄せない
+- **CHANGELOG の形は lily の形に揃えると、ユーザーが決めた。** 空の `## [Unreleased]` を戻す、
+  リンク定義は `releases/tag`、節はリンク定義のまとまりでも切る。repo ごとの違いをオプションで
+  吸収しない。この形を変えるときは、先にユーザーの判断を仰ぐ
 - 進める順の案は issue #1 のコメントにある（更新されていくので、着手前に最新を読む）
 - workflow の共通化と、action を `actions.lock` で固定する件もこの issue で扱っている
-- **今の挙動（lily / wema / wema-kake / roji が使っている形）は保つ。** npm の lock を揃える処理は
+- **今の挙動（取り込み先が使っている形）は保つ。** npm の lock を揃える処理は
   `npm-lock.mjs` に残してあり、lily 系は `--changelog-only` を付けずに呼ぶ（`.tagpr` は変えない）

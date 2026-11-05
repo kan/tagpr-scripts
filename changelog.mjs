@@ -49,7 +49,9 @@ const FENCE = /^ *(`{3,}|~{3,})(.*)$/;
  */
 function scan(text) {
   if (text.includes('\r')) {
-    throw new ReleaseError('CHANGELOG.md has CR line endings; save it with LF');
+    throw new ReleaseError(
+      'CHANGELOG.md has CR line endings; save it with LF (on Windows, add `CHANGELOG.md text eol=lf` to .gitattributes)',
+    );
   }
   /** @type {string | null} 開いているフェンスの記号の並び */
   let open = null;

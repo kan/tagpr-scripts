@@ -4,8 +4,11 @@ The scripts that let [tagpr](https://github.com/Songmu/tagpr) release an npm pac
 `CHANGELOG.md` is written by hand. Shared by [lily](https://github.com/kan/lily),
 [wema](https://github.com/kan/wema) and [wema-kake](https://github.com/kan/wema-kake),
 which pull this repository in with `git subtree` at `scripts/tagpr/`.
-[roji](https://github.com/kan/roji), a Go project with no version file, uses only the
-CHANGELOG part (`--changelog-only`).
+The Go projects [roji](https://github.com/kan/roji),
+[notify-slack](https://github.com/kan/notify-slack) and [hokora](https://github.com/kan/hokora),
+which have no version file, and the Tauri apps [pike](https://github.com/kan/pike) and
+[musql](https://github.com/kan/musql), which bring their own version files up to date, use
+only the CHANGELOG part (`--changelog-only`).
 
 | File | Run by | Does |
 |---|---|---|
@@ -50,7 +53,12 @@ one that brings its own version files and locks up to date in a wrapper of its o
   (`GITHUB_ACTIONS=true`), and the `origin` remote's anywhere else (GitHub only);
   `repository` in `package.json` is not read. There is no `[Unreleased]: .../compare/...` link; nothing
   would keep it up to date.
-- LF line endings.
+- LF line endings. In a repository worked on from Windows, keep Git from checking it out
+  with CRLF:
+
+  ```gitattributes
+  CHANGELOG.md text eol=lf
+  ```
 
 `release-prepare.mjs` checks everything before it writes anything, and writes nothing when
 it fails. It fails when:
