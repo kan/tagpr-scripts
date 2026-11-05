@@ -37,7 +37,8 @@ one that brings its own version files and locks up to date in a wrapper of its o
   (`[x]: url`) at the end of the file. Headings inside code fences are not headings.
 - Entries may be wrapped. `release-notes.mjs` joins the lines of a paragraph or a list
   item into one, because GitHub shows every line break in release notes: with nothing
-  between two Japanese characters (kanji, kana, full-width), and with one space anywhere
+  between two Japanese characters (kanji, kana, full-width) or next to full-width
+  punctuation and brackets (`、` `。` `（` `）` and so on), and with one space anywhere
   else. Code fences, headings, tables, block quotes, HTML blocks, thematic breaks and hard
   breaks (two trailing spaces or `\`) are left as they are. A wrapped line that starts with
   a number and a period (`2026. ...`) is taken for the next numbered item and not joined, so

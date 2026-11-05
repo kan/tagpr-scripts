@@ -173,6 +173,8 @@ const TABLE_DELIMITER = /^\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+\|?$/;
 // 日本語の文字（漢字、かな、全角の記号と英数字）。この文字どうしの間の改行は空白にしない。
 // Script_Extensions で見るのは、「ー」「・」が Script では Common になるため
 const CJK = /[\p{scx=Han}\p{scx=Hiragana}\p{scx=Katakana}　-〿＀-￯]/u;
+// 全角の句読点と括弧（、。，．・「」（）【】など）。前後の相手が英数字でも空白を入れない
+const CJK_PUNCT = /[　-〿・！-／：-＠［-｀｛-･]/u;
 // 強制改行: 行末の空白 2 つ以上か `\`
 const HARD_BREAK = /(?: {2}|\\)$/;
 
@@ -186,7 +188,8 @@ const HARD_BREAK = /(?: {2}|\\)$/;
  *   空白 2 つか `\`）はつながない
  * - 数字とピリオドで始まる行（`2026. ...`）は、番号付きの次の項目と区別できないので
  *   つながない。字下げのコードブロックは、項目の続きの行と区別できないので扱わない
- * - 前の行の末尾と次の行の先頭がどちらも日本語の文字なら、間に何も入れない。
+ * - 前の行の末尾と次の行の先頭がどちらも日本語の文字なら、間に何も入れない。どちらかが
+ *   全角の句読点か括弧（「、」「（」など）でも何も入れない（「、govulncheck」）。
  *   それ以外は空白 1 つ（英文のほか、「の `x`」のような日本語と英数字の間も空白になる）
  * @param {string} body 節の本文（`readSection` の結果）
  * @returns {string}
@@ -216,7 +219,8 @@ export function unwrapLines(body) {
     if (prose && !LIST_ITEM.test(text) && prev?.joinable) {
       const head = prev.line.trimEnd();
       // 前の行の最後の文字と次の行の最初の文字（サロゲートペアも 1 文字に数える）
-      const sep = CJK.test([...head].at(-1)) && CJK.test(String.fromCodePoint(text.codePointAt(0))) ? '' : ' ';
+      const [last, first] = [[...head].at(-1), String.fromCodePoint(text.codePointAt(0))];
+      const sep = (CJK.test(last) && CJK.test(first)) || CJK_PUNCT.test(last) || CJK_PUNCT.test(first) ? '' : ' ';
       // 行末の空白は残す（強制改行の空白 2 つを消さない）
       prev.line = head + sep + line.trimStart();
       prev.joinable = !HARD_BREAK.test(line);

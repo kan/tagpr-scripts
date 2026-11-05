@@ -329,7 +329,7 @@ test('unwrapLines: joins paragraphs and list items, nothing else', () => {
       '> lines',
       'hard break  ',
       'stays. backslash\\',
-      'stays. 日本語の行。「かぎ」 English 日本語',
+      'stays. 日本語の行。「かぎ」English 日本語',
     ].join('\n'),
   );
 });
@@ -355,6 +355,9 @@ test('unwrapLines: puts no space between Japanese characters', () => {
     ['あ\n𠮷野家', 'あ𠮷野家'],
     ['（括弧）\nの後', '（括弧）の後'],
     ['日本語の\n`code`', '日本語の `code`'],
+    ['標準ライブラリには、\ngovulncheck が', '標準ライブラリには、govulncheck が'],
+    ['dotenv\n（任意）', 'dotenv（任意）'],
+    ['終わり。\nNext', '終わり。Next'],
   ]) {
     assert.equal(unwrapLines(input), expected, JSON.stringify(input));
   }
