@@ -19,7 +19,8 @@ hokora と、Tauri の pike / musql が使っている）。
 | `release-notes.mjs` | 取り込み先の publish のワークフロー | CHANGELOG の 1 つの節の本文を出す。publish 前の存在確認と、GitHub Release の本文に使う。プレリリースのタグ（`vX.Y.Z-*`）では `Unreleased` の節を出す。段落と項目の折り返しは 1 行につなぐ（`unwrapLines`） |
 | `changelog.mjs` | 上の 2 つが import する | CHANGELOG の読み方（節の見出し、コードフェンス、末尾のリンク定義）と書き換え方（`stampRelease`）、日付・repo 名の決め方。import しても何も実行しない。npm に依存しない |
 | `npm-lock.mjs` | `release-prepare.mjs` が import する | `package.json` の版の確認と、`package-lock.json` の版を揃えた中身を作る。書くのは呼んだ側 |
-| `test/release.node-test.mjs` | `node --test` | 上の 4 つのテスト |
+| `cargo-lock.mjs` | `release-prepare.mjs` が import する（`--cargo <dir>`） | `<dir>/Cargo.toml` の `[package]` の版の確認と、`<dir>/Cargo.lock` の自分の `[[package]]` の版を揃えた中身を作る。`cargo` は呼ばない。書くのは呼んだ側 |
+| `test/release.node-test.mjs` | `node --test` | 上の 5 つのテスト |
 
 package.json は無い。依存も無い。
 
@@ -49,7 +50,8 @@ package.json は無い。依存も無い。
   tagpr は失敗してもリリース PR を更新するので、版だけ上がった PR を残さないため。
   検査を足すときは「書き換え」の区切りより前に置く
 - **スクリプトは repo のルートを作業ディレクトリにして実行される。** `CHANGELOG.md` /
-  `package.json` / `package-lock.json` はカレントディレクトリから読む。スクリプト自身の
+  `package.json` / `package-lock.json` と、`--cargo <dir>` の `<dir>/Cargo.toml` /
+  `<dir>/Cargo.lock` はカレントディレクトリから読む。スクリプト自身の
   場所（`scripts/tagpr/`）からの相対パスで読まない
 - **日付は日本時間。** `releaseDate` は +9 時間して `toISOString` で作る。`Intl` の既定の
   書式は ICU の版で変わりうるので使わない
@@ -114,7 +116,8 @@ git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.
   - notify-slack と hokora は `.tagpr` の `postVersionCommand` から直接呼ぶ。hokora は tagpr の後の
     ジョブで `sdk/vX.Y.Z` のタグも同じコミットに打つ
   - pike と musql は `scripts/release-prepare.mjs` のラッパーから、CHANGELOG → 版の書き換え →
-    クレジットの順で呼ぶ。`release-notes.mjs` もラッパーから呼ぶ
+    クレジットの順で呼ぶ。`release-notes.mjs` もラッパーから呼ぶ。Cargo.lock は `--cargo` に
+    移す予定（版のファイルは tagpr の `versionFile` が書き、ラッパーにはクレジットだけが残る）
   - 完成形の例は lily の `.github/workflows/`。`tagpr.yml` が `publish.yml` を、タグを ref にした
     `workflow_dispatch` で起動する
 
