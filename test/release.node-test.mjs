@@ -237,6 +237,13 @@ test('notes: prints the section for a tag, without the link definitions', () => 
   assert.equal(run(notes, dir, ['1.2.3']).stdout, '- Old.\n');
 });
 
+test('notes: prints Unreleased for a pre-release tag', () => {
+  const dir = makeRepo({ changelog: `${HEADER}## [Unreleased]\n\n- B.\n\n## [1.2.3]\n\n- Old.\n` });
+  const r = run(notes, dir, ['v1.3.0-rc.1']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, '- B.\n');
+});
+
 test('notes: fails on a missing or empty section', () => {
   const dir = makeRepo({ changelog: `${HEADER}## [Unreleased]\n\n## [1.2.3]\n\n- Old.\n` });
   assert.match(run(notes, dir, ['v9.9.9']).stderr, /no "## \[9\.9\.9\]"/);
