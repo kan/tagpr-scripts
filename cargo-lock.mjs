@@ -7,7 +7,9 @@
  * 出ず、lock の自分の行だけを書き換える（`cargo update --workspace` と同じ結果になる）。
  */
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+// メッセージのパスを OS によらず `/` で出す（`.tagpr` の versionFile と同じ書き方）。
+// Windows でも `/` 区切りのパスで読める
+import { posix } from 'node:path';
 import { ReleaseError, readRootFile } from './changelog.mjs';
 
 /**
@@ -47,8 +49,8 @@ export function readPackage(text, path) {
  * @returns {{ path: string, text: string } | null}
  */
 export function syncCargoLock(version, dir) {
-  const manifestPath = join(dir, 'Cargo.toml');
-  const path = join(dir, 'Cargo.lock');
+  const manifestPath = posix.join(dir, 'Cargo.toml');
+  const path = posix.join(dir, 'Cargo.lock');
   // readRootFile の「ルートで実行せよ」は、ここでは原因と違うことが多い（lock が workspace の
   // ルートにある、など）ので、先に確かめて別のことを言う
   for (const p of [manifestPath, path]) {
