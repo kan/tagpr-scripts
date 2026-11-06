@@ -174,3 +174,5 @@ issue を読まずに着手しない。進める順はユーザーと決める�
 - #3: リリース PR のラベルを付け外ししたら、自動で作り直す
 - #8: booch と booch-win のリリースを tagpr に移す（版の正本が `VERSION`、タグは annotated）。
   `versionFile` で `VERSION` を確かめる処理は入った。残りは booch / booch-win の側の移行
+- #12: `versionFile` で Perl モジュール（`*.pm`）の `$VERSION` を確かめる。coveralls-perl
+  （CPAN、ブランチは `master`）を取り込み先に加えるため（kan/coveralls-perl#50）
