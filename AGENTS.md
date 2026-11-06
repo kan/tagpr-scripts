@@ -169,6 +169,7 @@ issue を読まずに着手しない。進める順はユーザーと決める�
   残りは 8 つの取り込み先の移行（repo ごとの直すことは #6 の本文）
 - #9: pike と musql の build ジョブから、書き込みの権限を外す
 - #10: 取り込み先の呼ぶ行の SHA と subtree の commit が揃っているかを、CI で確かめる
+- #11: 共通の workflow が、古いリリース PR まで ready に戻す。直したら、lily と notify-slack の手順書の誤りも次の subtree pull の PR で直す
 - #4: 打たれなかったタグを、次の run で打ち直す
 - #3: リリース PR のラベルを付け外ししたら、自動で作り直す
 - #8: booch と booch-win のリリースを tagpr に移す（版の正本が `VERSION`、タグは annotated）。
