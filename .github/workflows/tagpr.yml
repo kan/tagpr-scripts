@@ -132,8 +132,10 @@ jobs:
       # GITHUB_TOKEN で書き換えるので、ほかの workflow は動かない。
       #
       # このステップが落ちると、タグは lightweight のまま残り、`release` も起動しない。run を
-      # 再実行しても、tagpr はタグを打ち直さず、このステップも動かない。手で打ち直してから起動する:
+      # 再実行しても、tagpr はタグを打ち直さず、このステップも動かない。手で打ち直す:
       # `git tag -a -f -m "Release vX.Y.Z" vX.Y.Z 'vX.Y.Z^{commit}' && git push -f origin vX.Y.Z`
+      # 手で push したタグは `push: tags` を起動する。`release-workflow` がそれを持つなら、その push で
+      # 起動するので `gh workflow run` を重ねない（同じタグで 2 回走る）。持たないなら手で起動する
       - name: Make the tag annotated
         if: steps.tagpr.outputs.tag != ''
         env:

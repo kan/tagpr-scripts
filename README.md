@@ -201,6 +201,13 @@ jobs:
   and `git describe` without `--tags` skips lightweight tags. The workflow replaces it with
   an annotated tag on the same commit before starting `release-workflow`. To get the commit
   from the tag, use `$TAG^{commit}` (or follow the tag object in the API), not `$TAG` alone.
+  If that step fails, the tag stays lightweight and `release-workflow` is not started, and
+  re-running the run does not help (tagpr does not make the tag again). Make it again by
+  hand: `git tag -a -f -m "Release vX.Y.Z" vX.Y.Z 'vX.Y.Z^{commit}' && git push -f origin vX.Y.Z`.
+  A tag pushed by hand starts `push: tags`; when `release-workflow` has that trigger, the
+  push starts it, so do not also run `gh workflow run` (it would run twice on the tag).
+- **If only starting `release-workflow` fails** (the tag is made), do not re-run the tagpr
+  run. Start it by hand: `gh workflow run <release-workflow> --ref vX.Y.Z`.
 
 `.tagpr` for an npm package:
 
