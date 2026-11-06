@@ -31,7 +31,8 @@ and `package-lock.json` (lockfile version 2 or later), are read from the working
 
 `release-prepare.mjs` reads `versionFile` from `.tagpr` (with `git config`) and checks that
 each file listed is at the proposed version: the top-level `"version"` of a `*.json`, the
-`[package]` `version` of a `Cargo.toml`. tagpr rewrites only the first occurrence of the
+`[package]` `version` of a `Cargo.toml`, the whole of a `VERSION` (the version alone, on
+one line, with or without a final LF). tagpr rewrites only the first occurrence of the
 current version in each file, so a dependency at the same version above the file's own
 version line would take the change and leave the real one behind, with nothing failing;
 the tag is then made from the first file's version. Other kinds of files cannot be checked
@@ -105,8 +106,8 @@ it fails. It fails when:
   `1.2.4` never gets a tag). That is why the message lists every untagged section, oldest
   first: tag them in that order. With no tags at all (tagpr passes `v0.0.0`) the check is
   skipped, so a repository that released without tags can adopt tagpr.
-- A file in `versionFile` is not at the version tagpr proposes, or is not a `*.json` or a
-  `Cargo.toml`.
+- A file in `versionFile` is not at the version tagpr proposes, or is not a `*.json`, a
+  `Cargo.toml` or a `VERSION`.
 - `package.json` is not at the version tagpr proposes (not checked with `--changelog-only`).
 - With `--cargo <dir>`, the `[package]` version in `<dir>/Cargo.toml` is not the proposed
   one, or `<dir>/Cargo.lock` does not have exactly one entry for the package without a
@@ -230,6 +231,14 @@ For a Tauri app, list every file that holds the version, and let `--cargo` bring
 
 All of the files listed are checked, `tauri.conf.json` included, so a wrapper does not need
 to check them again.
+
+For a repository that keeps its version in a `VERSION` file holding only the version, list
+that file:
+
+```ini
+	versionFile = VERSION
+	postVersionCommand = node scripts/tagpr/release-prepare.mjs --changelog-only
+```
 
 ## Changing it
 
