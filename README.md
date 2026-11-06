@@ -166,6 +166,18 @@ jobs:
   starts, including jobs that will be skipped.
 - Do not give the calling workflow a `concurrency` of its own. The tagpr job already
   queues the runs one at a time.
+- **Keep Dependabot off the calling line.** Add this to the `github-actions` entry of
+  `.github/dependabot.yml`:
+
+  ```yaml
+      ignore:
+        # Moved together with scripts/tagpr/ by git subtree pull, never on its own
+        - dependency-name: 'kan/tagpr-scripts*'
+  ```
+
+  A pull request that moved the SHA alone would leave `scripts/tagpr/` behind the
+  workflow that runs, and nothing would fail. This repository has no tags, so Dependabot
+  has nothing to move it to today, but that would change the day a tag is made.
 - Inputs:
   - `release-workflow`: the workflow file to start on the new tag. Leave it empty to
     start it yourself, after a job of your own (hokora tags `sdk/vX.Y.Z` first).

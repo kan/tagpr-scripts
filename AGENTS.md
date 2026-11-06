@@ -129,8 +129,12 @@ git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.
   上げる。** squash のコミットのメッセージにある `git-subtree-split` の SHA。取り込み先の squash や
   マージのコミットの SHA は、この repo に無いので使えない。
   呼ぶ行は `uses: kan/tagpr-scripts/.github/workflows/tagpr.yml@<SHA>`。手順は README の「Changing it」。
-  この repo にタグが無いので、Dependabot も上げない。subtree と揃えておけば、
-  `scripts/tagpr/.github/workflows/tagpr.yml` の写しが、動いているものと同じになる
+  subtree と揃えておけば、`scripts/tagpr/.github/workflows/tagpr.yml` の写しが、動いているものと同じになる
+- **取り込み先の dependabot.yml の `github-actions` には、`kan/tagpr-scripts*` の ignore を入れる**
+  （README の「The tagpr workflow」）。SHA だけを上げる PR が来ると、subtree が置いていかれ、どこも
+  落ちない。Dependabot は SHA で固定した参照を、参照先の最新タグの commit へ上げる。この repo には
+  タグが無いので今は来ないが、タグを打てば来るようになる（dependabot-core の `latest_commit_sha` を
+  2026-11 に読んだ）
 - **その PR はマージコミットで入れる。** squash で入れる repo でも同じ。subtree は前回の
   取り込みを自分が作ったコミットから探すので、squash すると次の pull が壊れる
 - 取り込む PR は取り込み先の CHANGELOG に書かない（利用者に届かない）
