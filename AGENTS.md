@@ -177,14 +177,13 @@ issue を読まずに着手しない。進める順はユーザーと決める�
 
 - #13: `## [Unreleased]` が空で出すものが無いときは、tagpr を走らせず成功で終える。この repo の側は
   入った（`release-pending.mjs`）。coveralls-perl は最初からこの版で入った。残りはほかの 8 repo への
-  subtree pull で、#3 / #4 / #8 の後にまとめて配る。全部に入ったら dotfiles の
+  subtree pull で、#8 の後にまとめて配る。全部に入ったら dotfiles の
   セッションに知らせる（`gh-upkeep-status` が、空での赤を fail に出していた）
-- #4: 打たれなかったタグを、次の run で打ち直す。**自動で打つ**（ユーザーの判断）。打つのは tagpr で、
-  次の run がマージの cancelled の run を再実行する。タグを外で打つと、取り込み先が `tag` を読むジョブと
-  `release = true` の GitHub Release が漏れるため。この repo の側は `missed-tags.mjs` と tagpr.yml の
-  missed のジョブを入れた。残りは取り込み先への配布（#13 と一緒に配る）
-- #3: リリース PR のラベルを付け外ししたら、自動で作り直す。**GitHub App は作らない**（ユーザーの判断）。
-  この repo の側は `tagpr-label.yml` を入れた。残りは取り込み先への配布（#13 と一緒に配る）。取り込み先の
-  手順書の「ラベルを変えたら `gh workflow run` で作り直す」は、配るときに消す
+  - 同じ配布で、閉じた #3 の分も入れる。coveralls-perl を含む 9 repo の呼ぶ側に `tagpr-label.yml` を足し、
+    取り込み先の手順書の「ラベルを変えたら `gh workflow run` で作り直す」を消す。足し方は README の
+    「Rebuild the release pull request when its version label changes」
+  - 閉じた #4 の分（missed のジョブ）は subtree pull だけで入る。呼ぶ側の権限は今の 4 つのままでよい。
+    取り込み先の手順書に「取り消されたマージの run は手で再実行する」とあれば、「次の run が再実行する。
+    できなかったときだけ手で」に直す
 - #8: booch と booch-win のリリースを tagpr に移す（版の正本が `VERSION`、タグは annotated）。
   `versionFile` で `VERSION` を確かめる処理は入った。残りは booch / booch-win の側の移行
