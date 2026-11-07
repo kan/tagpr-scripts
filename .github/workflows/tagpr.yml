@@ -88,7 +88,7 @@ jobs:
       # 第三者の action なので、タグが付け替えられても、記録した commit 以外は動かさない
       - name: Run tagpr
         id: tagpr
-        uses: Songmu/tagpr@v1.21.4
+        uses: Songmu/tagpr@v1.22.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAGPR_ARTIFACT_DIR: ${{ steps.artifact.outcome == 'success' && format('{0}/tagpr-artifact', runner.temp) || '' }}
