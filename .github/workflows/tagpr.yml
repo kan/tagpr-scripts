@@ -6,7 +6,8 @@ name: tagpr
 #
 # 動き:
 #
-# - main への push ごとに、リリース PR（ブランチ `tagpr-from-v<前の版>`）を main の上に作り直す。
+# - リリースのブランチ（`.tagpr` の `releaseBranch`。main や master）への push ごとに、リリース PR
+#   （ブランチ `tagpr-from-v<前の版>`）をそのブランチの上に作り直す。
 #   版のファイルは tagpr が書き換え、CHANGELOG と lock は `.tagpr` の postVersionCommand
 #   （`scripts/tagpr/release-prepare.mjs`）が直す
 # - リリース PR がマージされると、次の run がマージコミットにタグを打ち、`release` ジョブが
@@ -138,7 +139,7 @@ jobs:
             while read -r -u 3 n is_draft; do
               [ -n "$n" ] && [ "$is_draft" = false ] || continue
               gh pr ready --undo "$n" </dev/null
-              gh pr comment "$n" </dev/null --body "tagpr の run が落ちたので draft にしました。この PR は CHANGELOG や lock が揃っていない可能性があります。原因を直して main に push すると、作り直されて ready に戻ります（新しいリリース PR ができたときは、この PR を閉じます）。 $RUN_URL"
+              gh pr comment "$n" </dev/null --body "tagpr の run が落ちたので draft にしました。この PR は CHANGELOG や lock が揃っていない可能性があります。原因を直してリリースのブランチに push すると、作り直されて ready に戻ります（新しいリリース PR ができたときは、この PR を閉じます）。 $RUN_URL"
             done 3<<<"$prs"
             exit 0
           fi
@@ -188,7 +189,7 @@ jobs:
 
   # **GITHUB_TOKEN で push したタグでは `push: tags` が起動しない。** `workflow_dispatch` は
   # その例外なので、タグを ref にして起動する。`workflow_call` で同じ run から呼ばない。そうすると
-  # run の ref が main になり、OIDC のトークンも provenance も attestation もそれを名乗る
+  # run の ref がリリースのブランチになり、OIDC のトークンも provenance も attestation もそれを名乗る
   # （npm の Trusted Publisher は publish のワークフローのファイルで判定する）。
   #
   # 起動だけが失敗したときも、その run を再実行する（上のステップと同じ README の節）。

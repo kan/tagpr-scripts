@@ -323,6 +323,49 @@ for (const { name, opts, message, args, next, current, repository } of [
     opts: { files: { '.tagpr': '[tagpr]\n\tversionFile = VERSION\n', VERSION: `${String.fromCharCode(0xfeff)}1.2.4\n` } },
     message: /VERSION starts with a BOM/,
   },
+  ...[
+    {
+      // tagpr が `use` の版を先に見つけて書き換え、$VERSION の行が古いまま
+      name: 'a *.pm whose $VERSION tagpr missed',
+      pm: 'package Foo;\nuse Bar 1.2.4;\nour $VERSION = "1.2.3";\n1;\n',
+      message: /lib\/Foo\.pm says 1\.2\.3, but tagpr proposes 1\.2\.4/,
+    },
+    { name: 'a *.pm without $VERSION', pm: 'package Foo;\n1;\n', message: /lib\/Foo\.pm has no our \$VERSION = "X\.Y\.Z"; line/ },
+    {
+      name: 'a *.pm that sets $VERSION twice',
+      pm: 'package Foo;\nour $VERSION = "1.2.4";\npackage Foo::Bar;\nour $VERSION = "1.2.4";\n1;\n',
+      message: /lib\/Foo\.pm sets \$VERSION more than once \(lines 2, 4\)/,
+    },
+    // 本文の 1 行目がファイルの 2 行目。落ちるのは本文の最後の行
+    ...[
+      'our $VERSION = "1.2.4";\n$VERSION = eval $VERSION;\n',
+      'our $VERSION = "1.2.4_01";\n$VERSION =~ tr/_//d;\n',
+      'our $VERSION = "1.2.4";\n$VERSION ||= "9";\n',
+      'our $VERSION = "1.2.4";\n$Foo::VERSION = "1.2.4";\n',
+      'our $VERSION = "1.2.4";\nour ($VERSION, $X) = ("9", 1);\n',
+      'our ($VERSION) = "1.2.4";\n',
+      'our $VERSION = "$BASE.4";\n',
+      'our $VERSION = qv("1.2.4");\n',
+      'our $VERSION = "v1.2.4";\n',
+    ].map((body) => {
+      const lines = body.split('\n').slice(0, -1);
+      return {
+        name: `a *.pm with ${JSON.stringify(lines.at(-1))}`,
+        pm: `package Foo;\n${body}1;\n`,
+        message: new RegExp(`lib/Foo\\.pm line ${lines.length + 1} sets \\$VERSION in a form that cannot be checked`),
+      };
+    }),
+    {
+      name: 'a *.pm with "package NAME VERSION"',
+      pm: 'package Foo 1.2.4;\n1;\n',
+      message: /lib\/Foo\.pm line 1 gives the version as "package NAME VERSION"/,
+    },
+  ].map(({ name, pm, message }) => ({
+    name,
+    opts: { files: { '.tagpr': '[tagpr]\n\tversionFile = lib/Foo.pm\n', 'lib/Foo.pm': pm } },
+    message,
+    args: ['--changelog-only'],
+  })),
   {
     name: 'a missing Cargo.lock',
     opts: { cargo: { lock: null } },
@@ -371,6 +414,37 @@ test('prepare: checks every versionFile in .tagpr', () => {
     const booch = makeRepo({ pkg: false, lock: false, files: { '.tagpr': '[tagpr]\n\tversionFile = VERSION\n', VERSION: version } });
     prepareAndRead(booch, ['--changelog-only']);
   }
+  // Perl のモジュールと Minilla の META.json（coveralls-perl）。POD と __END__ の後は読まない
+  const pm = [
+    'package Devel::Cover::Report::Coveralls;',
+    'use strict;',
+    "our $VERSION = '1.2.4'; # the version",
+    'if ($VERSION == 1) {}',
+    '# our $VERSION = "0.1";',
+    'die "set $VERSION = 1" unless 1;',
+    'my %h = (version => $VERSION);',
+    '',
+    '=head1 SYNOPSIS',
+    '',
+    '    our $VERSION = "9.9.9";',
+    '',
+    '=cut',
+    '',
+    '1;',
+    '__END__',
+    '$VERSION = "0.0.1";',
+    '',
+  ].join('\r\n');
+  const perl = makeRepo({
+    pkg: false,
+    lock: false,
+    files: {
+      '.tagpr': '[tagpr]\n\tversionFile = lib/Devel/Cover/Report/Coveralls.pm,META.json\n',
+      'lib/Devel/Cover/Report/Coveralls.pm': pm,
+      'META.json': '{\n   "name" : "Devel-Cover-Report-Coveralls",\n   "version" : "1.2.4"\n}\n',
+    },
+  });
+  prepareAndRead(perl, ['--changelog-only']);
   // 版をタグだけで持つ repo（versionFile = -）は何も確かめない
   const go = makeRepo({ pkg: false, lock: false, files: { '.tagpr': '[tagpr]\n\tversionFile = -\n' } });
   prepareAndRead(go, ['--changelog-only']);

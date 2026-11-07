@@ -20,7 +20,7 @@ hokora が使っている）。Tauri の pike / musql は `--cargo src-tauri` �
 | `changelog.mjs` | ほかのスクリプトがすべて import する | CHANGELOG の読み方（節の見出し、コードフェンス、末尾のリンク定義）と書き換え方（`stampRelease`）、日付・repo 名の決め方。import しても何も実行しない。npm に依存しない |
 | `npm-lock.mjs` | `release-prepare.mjs` が import する | `package.json` の版の確認と、`package-lock.json` の版を揃えた中身を作る。書くのは呼んだ側 |
 | `cargo-lock.mjs` | `release-prepare.mjs` が import する（`--cargo <dir>`） | `<dir>/Cargo.toml` の `[package]` の版の確認と、`<dir>/Cargo.lock` の自分の `[[package]]` の版を揃えた中身を作る。`cargo` は呼ばない。書くのは呼んだ側 |
-| `version-files.mjs` | `release-prepare.mjs` が import する | `.tagpr` の `versionFile` を `git config` で読み、並んだ全部のファイルの本来の版（`*.json` は最上位の `"version"`、`Cargo.toml` は `[package]`、`VERSION` は中身の全体）が提案の版かを確かめる。tagpr は各ファイルで今の版の最初の 1 か所しか書き換えず、別の行に当たっても何も落ちないため |
+| `version-files.mjs` | `release-prepare.mjs` が import する | `.tagpr` の `versionFile` を `git config` で読み、並んだ全部のファイルの本来の版（`*.json` は最上位の `"version"`、`Cargo.toml` は `[package]`、`VERSION` は中身の全体、`*.pm` は `our $VERSION = "X.Y.Z";` のちょうど 1 行）が提案の版かを確かめる。tagpr は各ファイルで今の版の最初の 1 か所しか書き換えず、別の行に当たっても何も落ちないため |
 | `verify-subtree.mjs` | 取り込み先の PR の CI | 取り込み先の `HEAD:scripts/tagpr` の tree と、`.github/workflows/` で呼ぶ `kan/tagpr-scripts/.github/workflows/tagpr.yml@<SHA>` の commit の tree が同じかを確かめる |
 | `test/release.node-test.mjs` | `node --test` | `verify-subtree.mjs` を除く上の 6 つのテスト |
 | `test/verify-subtree.node-test.mjs` | `node --test` | `verify-subtree.mjs` のテスト。一時ディレクトリに upstream と取り込み先の repo を作る |
@@ -175,5 +175,6 @@ issue を読まずに着手しない。進める順はユーザーと決める�
 - #3: リリース PR のラベルを付け外ししたら、自動で作り直す
 - #8: booch と booch-win のリリースを tagpr に移す（版の正本が `VERSION`、タグは annotated）。
   `versionFile` で `VERSION` を確かめる処理は入った。残りは booch / booch-win の側の移行
-- #12: `versionFile` で Perl モジュール（`*.pm`）の `$VERSION` を確かめる。coveralls-perl
-  （CPAN、ブランチは `master`）を取り込み先に加えるため（kan/coveralls-perl#50）
+- #12: `versionFile` で Perl モジュール（`*.pm`）の `$VERSION` を確かめる処理は入った。
+  残りは coveralls-perl（CPAN、ブランチは `master`）の側の取り込み（kan/coveralls-perl#50）。
+  済んだら「取り込み先」の一覧と README の冒頭に coveralls-perl を足す
