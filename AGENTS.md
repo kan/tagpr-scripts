@@ -131,7 +131,12 @@ git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.
   上げる。** squash のコミットのメッセージにある `git-subtree-split` の SHA。取り込み先の squash や
   マージのコミットの SHA は、この repo に無いので使えない。
   呼ぶ行は `uses: kan/tagpr-scripts/.github/workflows/tagpr.yml@<SHA>`。手順は README の「Changing it」。
-  subtree と揃えておけば、`scripts/tagpr/.github/workflows/tagpr.yml` の写しが、動いているものと同じになる
+  subtree と揃えておけば、`scripts/tagpr/.github/workflows/tagpr.yml` の写しが、動いているものと同じになる。
+  取り込み先の PR の CI は `node scripts/tagpr/verify-subtree.mjs` で揃っているかを確かめる。新しい取り込み先にも入れる
+- **取り込み先の手順書に、共通の workflow の動きや復旧の手順を書き写さない。** `scripts/tagpr/README.md` の
+  「The tagpr workflow」へリンクさせる。写しは subtree pull で更新されず、tagpr の版が変わるたびに食い違う。
+  取り込み先に残すのは、その repo に固有のことだけ。
+  起動する workflow の名前、それが `push: tags` を持つか、再実行してはいけない理由などがそれにあたる
 - **取り込み先の dependabot.yml の `github-actions` には、`kan/tagpr-scripts*` の ignore を入れる**
   （README の「The tagpr workflow」）。SHA だけを上げる PR が来ると、subtree が置いていかれ、どこも
   落ちない。Dependabot は SHA で固定した参照を、参照先の最新タグの commit へ上げる。この repo には
@@ -166,18 +171,6 @@ issue #1）。`--changelog-only` が npm でない repo の入り口。
 
 issue を読まずに着手しない。進める順はユーザーと決める。
 
-- #5 / #10 / #11: この repo の側は済んだ（tagpr v1.22.0、`verify-subtree.mjs`、前のリリース PR を閉じる）。
-  **残りは取り込み先の 8 repo で、1 repo につき 1 つの subtree pull の PR にまとめる。** 最初は notify-slack で、
-  v1.22.0 のリリースを本番で 1 回通してから広げる。pike と musql は Windows 側のセッションに頼む
-  - PR の CI に `node scripts/tagpr/verify-subtree.mjs` を足す（#10）
-  - **取り込み先の手順書に、共通の workflow の復旧の手順を書き写さない。** `scripts/tagpr/README.md` の
-    「The tagpr workflow」へのリンクに置き換える（subtree pull で一緒に更新される）。今ある写しの
-    食い違いは次のとおりで、どれもリンクへの置き換えで消える
-    - v1.21.4 前提の「tagpr の run を再実行しない」（#5）: hokora の AGENTS.md、pike と musql の
-      `.claude/skills/release/SKILL.md`
-    - lily と notify-slack の「作り直して戻す」の誤り（#11）
-    - wema-kake と notify-slack で、手で打ち直す前の `git fetch --force origin tag vX.Y.Z` が抜けている（#11）
-    - 全 repo の「古い PR は手で閉じる」の記述（#11）
 - #4: 打たれなかったタグを、次の run で打ち直す
 - #3: リリース PR のラベルを付け外ししたら、自動で作り直す
 - #8: booch と booch-win のリリースを tagpr に移す（版の正本が `VERSION`、タグは annotated）。
