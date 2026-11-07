@@ -9,7 +9,9 @@ The Go projects [roji](https://github.com/kan/roji),
 which have no version file, use only the CHANGELOG part (`--changelog-only`). The Tauri apps
 [musql](https://github.com/kan/musql) (`--changelog-only --cargo src-tauri`) and
 [pike](https://github.com/kan/pike) (`--cargo src-tauri`, with `package.json` too) also
-bring `Cargo.lock` along.
+bring `Cargo.lock` along. The CPAN module
+[coveralls-perl](https://github.com/kan/coveralls-perl) (`--changelog-only`) keeps its
+version in a Perl module and `META.json`, and releases from `master`.
 
 | File | Run by | Does |
 |---|---|---|
@@ -316,6 +318,9 @@ the `META.json` that Minilla writes:
 	versionFile = lib/Foo/Bar.pm,META.json
 	postVersionCommand = node scripts/tagpr/release-prepare.mjs --changelog-only
 ```
+
+With Minilla, set `manage_changes = false` in `minil.toml` once `Changes` is replaced by
+`CHANGELOG.md`: `minil dist` otherwise tries to rewrite `Changes`.
 
 The release branch does not have to be `main`. Set `releaseBranch` in `.tagpr` and
 `on.push.branches` of the calling workflow to the same branch (`master`, for example).

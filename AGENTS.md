@@ -12,6 +12,7 @@
 `scripts/release-*.mjs` を 1 つにまとめたもの）。npm でない repo も
 `release-prepare.mjs --changelog-only` で CHANGELOG の処理だけを使える（Go の roji / notify-slack /
 hokora が使っている）。Tauri の pike / musql は `--cargo src-tauri` で Cargo.lock も揃える。
+CPAN の coveralls-perl は、版を Perl モジュールと `META.json` に持ち、`master` からリリースする。
 
 | ファイル | 呼ぶもの | 役割 |
 |---|---|---|
@@ -147,7 +148,7 @@ git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.
   取り込みを自分が作ったコミットから探すので、squash すると次の pull が壊れる
 - 取り込む PR は取り込み先の CHANGELOG に書かない（利用者に届かない）
 - 取り込み先: lily / wema / wema-kake（npm）、roji / notify-slack / hokora（Go）、
-  pike / musql（Tauri）。npm 以外は `--changelog-only` で呼ぶ
+  pike / musql（Tauri）、coveralls-perl（CPAN）。npm 以外は `--changelog-only` で呼ぶ
   - roji は自分のラッパー（`scripts/release-prepare.sh`。CREDITS を置き換える）から呼ぶ
   - notify-slack と hokora は `.tagpr` の `postVersionCommand` から直接呼ぶ。hokora は tagpr の後の
     ジョブで `sdk/vX.Y.Z` のタグも同じコミットに打つ
@@ -173,13 +174,12 @@ issue #1）。`--changelog-only` が npm でない repo の入り口。
 issue を読まずに着手しない。進める順はユーザーと決める。
 
 - #13: `## [Unreleased]` が空で出すものが無いときは、tagpr を走らせず成功で終える。この repo の側は
-  入った（`release-pending.mjs`）。残りは取り込み先の 8 repo への subtree pull と、取り込み中の
-  coveralls-perl（#12）が最初からこの版で入ること。全部に入ったら dotfiles の
+  入った（`release-pending.mjs`）。coveralls-perl は最初からこの版で入った。残りはほかの 8 repo への
+  subtree pull で、#3 / #4 / #8 の後にまとめて配る。全部に入ったら dotfiles の
   セッションに知らせる（`gh-upkeep-status` が、空での赤を fail に出していた）
 - #4: 打たれなかったタグを、次の run で打ち直す
-- #3: リリース PR のラベルを付け外ししたら、自動で作り直す
+- #3: リリース PR のラベルを付け外ししたら、自動で作り直す。**GitHub App は作らない**（ユーザーの判断）。
+  `pull_request_target` の `labeled` / `unlabeled` なら、承認待ちにならずに作り直せることを
+  sandbox で確かめた（#3 のコメント）
 - #8: booch と booch-win のリリースを tagpr に移す（版の正本が `VERSION`、タグは annotated）。
   `versionFile` で `VERSION` を確かめる処理は入った。残りは booch / booch-win の側の移行
-- #12: `versionFile` で Perl モジュール（`*.pm`）の `$VERSION` を確かめる処理は入った。
-  残りは coveralls-perl（CPAN、ブランチは `master`）の側の取り込み（kan/coveralls-perl#50）。
-  済んだら「取り込み先」の一覧と README の冒頭に coveralls-perl を足す
