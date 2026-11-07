@@ -118,6 +118,19 @@ export function compareVersions(a, b) {
 }
 
 /**
+ * 最新のタグより新しい版の節を、古い順に返す。`current` が `0.0.0`（タグが 1 つも無い）なら、すべての
+ * 版の節。`stampRelease` と `release-pending.mjs` が同じ規則で見るためにここに置く
+ * @param {string} text CHANGELOG.md の中身
+ * @param {string} current 最新のタグの版（`X.Y.Z`）
+ * @returns {string[]}
+ */
+export function untaggedVersions(text, current) {
+  return versionHeadings(text)
+    .filter((v) => compareVersions(v, current) > 0)
+    .sort(compareVersions);
+}
+
+/**
  * `## [name]` の節の本文を、前後の空行を落として返す。節が無ければ `null`、
  * 空なら `''`。**重複だけは投げる**（どちらが正か決められないため）。
  * @param {string} text CHANGELOG.md の中身
@@ -261,12 +274,7 @@ export function stampRelease(text, { version, current, repo, date }) {
   //
   // タグが 1 つも無いと tagpr は `v0.0.0` を渡す。そのときは比べる相手が無いので見ない
   // （タグを打たずにリリースしてきた repo が tagpr へ移ると、古い節がすべて引っかかる）。
-  const untagged =
-    current === '0.0.0'
-      ? []
-      : versionHeadings(text)
-          .filter((v) => compareVersions(v, current) > 0)
-          .sort(compareVersions);
+  const untagged = current === '0.0.0' ? [] : untaggedVersions(text, current);
   if (untagged.length > 0) {
     // 古い順にすべて出す。新しい方だけ直すと、古い方はそのタグより古くなって見えなくなる
     const sections = untagged.map((v) => `"## [${v}]"`).join(', ');

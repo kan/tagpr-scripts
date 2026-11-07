@@ -15,6 +15,7 @@ import { compareVersions, findSection, githubRepo, releaseDate, unwrapLines, ver
 
 const prepare = join(import.meta.dirname, '..', 'release-prepare.mjs');
 const notes = join(import.meta.dirname, '..', 'release-notes.mjs');
+const pendingScript = join(import.meta.dirname, '..', 'release-pending.mjs');
 
 const HEADER = '# Changelog\n\nIntro.\n\n';
 const MINIMAL = `${HEADER}## [Unreleased]\n\n- A.\n`;
@@ -478,6 +479,62 @@ test('prepare: says where to run it when a file is missing', () => {
   const sub = join(makeRepo(), 'sub');
   mkdirSync(sub);
   assert.match(run(notes, sub, ['1.2.4']).stderr, /CHANGELOG\.md not found/);
+});
+
+// --- release-pending.mjs ---
+
+/** タグの ref を標準入力に渡して走らせる。`changelog` が null なら CHANGELOG.md を置かない */
+function pending(changelog, refs) {
+  const dir = makeRepo({ changelog: changelog ?? '', pkg: false, lock: false });
+  if (changelog === null) rmSync(join(dir, 'CHANGELOG.md'));
+  return spawnSync(process.execPath, [pendingScript], { cwd: dir, env: gitEnv(), encoding: 'utf8', input: refs.join('\n') });
+}
+
+const TAGS = ['refs/tags/v1.2.2', 'refs/tags/v1.2.10', 'refs/tags/v1.2.3-rc.1', 'refs/tags/sdk/v9.0.0', 'refs/tags/latest'];
+const RELEASED = `${HEADER}## [Unreleased]\n\n## [1.2.10] - 2026-01-01\n\n- Old.\n\n[1.2.10]: https://github.com/o/r/releases/tag/v1.2.10\n`;
+
+for (const { name, changelog, refs, out, reason } of [
+  { name: 'Unreleased is empty and every section is tagged', changelog: RELEASED, refs: TAGS, out: 'false', reason: /no section is newer than the latest tag v1\.2\.10/ },
+  { name: 'there are no tags and no sections', changelog: `${HEADER}## [Unreleased]\n`, refs: [], out: 'false', reason: /latest tag v0\.0\.0: nothing to release/ },
+  {
+    // タグの無い repo（v の無いタグだけの repo も同じ）の、最初のリリース PR のマージの run
+    name: 'there are no v tags and a section is there',
+    changelog: RELEASED,
+    refs: ['refs/tags/1.2.10', 'refs/tags/0.31'],
+    out: 'true',
+    reason: /"## \[1\.2\.10\]", newer than the latest tag v0\.0\.0/,
+  },
+  {
+    name: 'several sections are newer than the latest tag',
+    changelog: RELEASED.replace('## [1.2.10]', '## [1.3.0]\n\n- New.\n\n## [1.2.11]'),
+    refs: TAGS,
+    out: 'true',
+    reason: /"## \[1\.2\.11\]", newer than/,
+  },
+  { name: 'Unreleased has entries', changelog: MINIMAL, refs: TAGS, out: 'true', reason: /has entries/ },
+  {
+    // リリース PR のマージの run。タグはまだ無い
+    name: 'a section is newer than the latest tag',
+    changelog: RELEASED.replace('## [1.2.10]', '## [1.2.11]'),
+    refs: TAGS,
+    out: 'true',
+    reason: /"## \[1\.2\.11\]", newer than the latest tag v1\.2\.10/,
+  },
+  { name: 'Unreleased is missing', changelog: `${HEADER}## [1.2.10]\n\n- Old.\n`, refs: TAGS, out: 'true', reason: /no "## \[Unreleased\]"/ },
+  { name: 'Unreleased is duplicated', changelog: `${HEADER}## [Unreleased]\n\n## [Unreleased]\n`, refs: TAGS, out: 'true', reason: /2 "## \[Unreleased\]" sections/ },
+]) {
+  test(`pending: prints ${out} when ${name}`, () => {
+    const r = pending(changelog, refs);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stdout, `${out}\n`);
+    assert.match(r.stderr, reason);
+  });
+}
+
+test('pending: fails when CHANGELOG.md is missing', () => {
+  const r = pending(null, []);
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, '');
 });
 
 // --- release-notes.mjs ---

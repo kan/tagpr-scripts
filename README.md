@@ -15,7 +15,8 @@ bring `Cargo.lock` along.
 |---|---|---|
 | `release-prepare.mjs` | tagpr, as `postVersionCommand` | Turns `## [Unreleased]` into `## [X.Y.Z] - <date in JST>`, adds the version's link definition, and brings `package-lock.json` to the version tagpr put in `package.json` (not with `--changelog-only`) |
 | `release-notes.mjs` | The publish workflow | Prints one section of `CHANGELOG.md`, to check that it exists before publishing and to use it as the GitHub release notes. Given a tag `vX.Y.Z` it prints `## [X.Y.Z]`; given a pre-release tag (`vX.Y.Z-rc.1`, tagged by hand on `main`) it prints `## [Unreleased]` |
-| `changelog.mjs` | (imported by both) | How a `CHANGELOG.md` is read and stamped. Written in one place so the release pull request and the publish never disagree. Knows nothing about npm |
+| `release-pending.mjs` | The tagpr workflow, before tagpr | Prints `false` when there is nothing to release (`## [Unreleased]` is empty, and no section is newer than the latest tag), so that tagpr is not run; `true` otherwise |
+| `changelog.mjs` | (imported by the others) | How a `CHANGELOG.md` is read and stamped. Written in one place so the release pull request and the publish never disagree. Knows nothing about npm |
 | `npm-lock.mjs` | (imported by `release-prepare.mjs`) | The `package.json` / `package-lock.json` part |
 | `cargo-lock.mjs` | (imported by `release-prepare.mjs`) | The `Cargo.toml` / `Cargo.lock` part, with `--cargo <dir>` |
 | `version-files.mjs` | (imported by `release-prepare.mjs`) | Checks that every `versionFile` in `.tagpr` is at the proposed version |
@@ -86,9 +87,8 @@ of the package's own `[[package]]` entry in `Cargo.lock` (the one without a `sou
 `release-prepare.mjs` checks everything before it writes anything, and writes nothing when
 it fails. It fails when:
 
-- `## [Unreleased]` is missing, empty or duplicated. Right after a release this is
-  expected, and every push to the release branch gets a red tagpr run until a pull request
-  adds an entry.
+- `## [Unreleased]` is missing, empty or duplicated. (Right after a release, the tagpr
+  workflow does not run tagpr at all: see "With nothing to release" below.)
 - **A version section newer than the latest tag is already there** (the latest tag is
   `TAGPR_CURRENT_VERSION`, which tagpr passes along with `TAGPR_NEXT_VERSION`). tagpr
   rebuilds the release pull request from the release branch every time, so this means a release pull request
@@ -211,8 +211,14 @@ jobs:
   rebuilds the release pull request even when `postVersionCommand` fails: the version files
   are bumped, but `CHANGELOG.md` and the locks are not. Merged, it would make a tag with no
   CHANGELOG section, which the publish then refuses. The draft cannot be merged; the next
-  run that succeeds marks it ready again. Right after a release this happens on every push
-  until a pull request adds an entry under `## [Unreleased]`.
+  run that succeeds marks it ready again.
+- **With nothing to release, tagpr is not run.** When `## [Unreleased]` is empty and no
+  section is newer than the latest tag (a push right after a release that changes nothing
+  in `CHANGELOG.md`), `release-pending.mjs` says so, and the run passes with a notice and
+  no release pull request. A run of a merge, or one after a tag was missed, still runs
+  tagpr, and so does a run while a release pull request is open and ready (it is rebuilt
+  and turned into a draft). If the check itself fails, tagpr is run, so a tag is never left
+  unmade for it.
 - **A successful run marks ready only the release pull request it rebuilt, and closes the
   others.** tagpr looks only at the branch `tagpr-from-v<latest tag>`, so once a tag is made,
   an older release pull request (say, the draft left behind when the run of a merge was

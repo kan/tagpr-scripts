@@ -75,9 +75,44 @@ jobs:
         with:
           node-version: 24
 
+      # **出すものが無ければ、tagpr を走らせず成功で終える（issue #13）。** 判定と理由は
+      # `scripts/tagpr/release-pending.mjs`。checkout は浅くタグを持たないので、タグは API で取る。
+      # **このステップが落ちても tagpr は走らせる**（API の一時的な失敗など）。止めると、マージの run で
+      # タグが打たれない。飛ばすのは、はっきり `false` と出たときだけ。
+      # ready のリリース PR が開いていれば飛ばさない（`## [Unreleased]` の項目を消す revert の後など）。
+      # tagpr に作り直させ、落ちた run として draft にする
+      - name: Check for something to release
+        id: pending
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # 取得が落ちたらステップも落とす（パイプに直に書くと、落ちても空の一覧で進む）
+          refs=$(gh api --paginate "repos/$GH_REPO/git/matching-refs/tags/" --jq '.[].ref')
+          reason="$RUNNER_TEMP/release-pending.txt"
+          pending=$(node scripts/tagpr/release-pending.mjs <<<"$refs" 2>"$reason") || { cat "$reason" >&2; exit 1; }
+          cat "$reason"
+          case "$pending" in
+            true) ;;
+            false)
+              ready=$(gh api --paginate "repos/$GH_REPO/pulls?state=open&per_page=100" \
+                --jq '.[] | select(any(.labels[]; .name == "tagpr") and (.head.ref | startswith("tagpr-from-v")) and (.draft | not)) | .number')
+              if [ -n "$ready" ]; then
+                echo "release pull request #${ready//$'\n'/, #} is ready, so tagpr is run to rebuild it"
+                pending=true
+              else
+                echo "::notice::$(cat "$reason"). tagpr is not run"
+              fi
+              ;;
+            *) echo "::error::release-pending.mjs printed \"$pending\", not true or false"; exit 1 ;;
+          esac
+          echo "pending=$pending" >>"$GITHUB_OUTPUT"
+
       # 落とせなくても tagpr は走らせる。マージの run はタグを打つだけで artifact を使わないので、
       # 前のジョブの一時的な失敗でタグを打ち損ねないようにする
-      - if: inputs.artifact != ''
+      - if: inputs.artifact != '' && steps.pending.outputs.pending != 'false'
         id: artifact
         continue-on-error: true
         uses: actions/download-artifact@v8.0.2
@@ -89,6 +124,7 @@ jobs:
       # 第三者の action なので、タグが付け替えられても、記録した commit 以外は動かさない
       - name: Run tagpr
         id: tagpr
+        if: steps.pending.outputs.pending != 'false'
         uses: Songmu/tagpr@v1.22.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
