@@ -265,7 +265,11 @@ jobs:
   tagpr, and so does a run while a release pull request is open and ready (it is rebuilt
   and turned into a draft), and a run started by `workflow_dispatch` (a rebuild asked for
   by hand or by `tagpr-label.yml`). If the check itself fails, tagpr is run, so a tag is never left
-  unmade for it.
+  unmade for it. A run with nothing to release closes every release pull request (label
+  `tagpr`, branch `tagpr-from-v`) that is open as a draft, with a comment, and keeps their
+  branches. Such a draft was left by a run that failed, or by a label change whose rebuild
+  has not run yet; either way there is nothing in it to release, and the next pull request
+  that writes `CHANGELOG.md` gets a new one.
 - **A successful run marks ready only the release pull request it rebuilt, and closes the
   others.** tagpr looks only at the branch `tagpr-from-v<latest tag>`, so once a tag is made,
   an older release pull request (say, the draft left behind when the run of a merge was
