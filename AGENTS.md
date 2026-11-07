@@ -22,7 +22,7 @@ hokora が使っている）。Tauri の pike / musql は `--cargo src-tauri` �
 | `cargo-lock.mjs` | `release-prepare.mjs` が import する（`--cargo <dir>`） | `<dir>/Cargo.toml` の `[package]` の版の確認と、`<dir>/Cargo.lock` の自分の `[[package]]` の版を揃えた中身を作る。`cargo` は呼ばない。書くのは呼んだ側 |
 | `version-files.mjs` | `release-prepare.mjs` が import する | `.tagpr` の `versionFile` を `git config` で読み、並んだ全部のファイルの本来の版（`*.json` は最上位の `"version"`、`Cargo.toml` は `[package]`、`VERSION` は中身の全体）が提案の版かを確かめる。tagpr は各ファイルで今の版の最初の 1 か所しか書き換えず、別の行に当たっても何も落ちないため |
 | `test/release.node-test.mjs` | `node --test` | 上の 6 つのテスト |
-| `.github/workflows/tagpr.yml` | 取り込み先の tagpr.yml が `uses:` で呼ぶ（reusable workflow。この repo では動かない） | tagpr を走らせ、タグを打ったら annotated に打ち直し、取り込み先の publish / release をそのタグで `workflow_dispatch` する。tagpr が落ちた run ではリリース PR を draft にする。入力は README の「The tagpr workflow」 |
+| `.github/workflows/tagpr.yml` | 取り込み先の tagpr.yml が `uses:` で呼ぶ（reusable workflow。この repo では動かない） | tagpr を走らせ、タグを打ったら annotated に打ち直し、取り込み先の publish / release をそのタグで `workflow_dispatch` する。tagpr が落ちた run ではリリース PR を draft にし、成功した run ではその run のリリース PR だけを ready に戻して、前のリリース PR を閉じる。入力は README の「The tagpr workflow」 |
 
 package.json は無い。依存も無い。
 
@@ -166,7 +166,11 @@ issue を読まずに着手しない。進める順はユーザーと決める�
 
 - #5: tagpr を v1.22.0 に上げる。上げると、取り込み先の復旧の手順が変わる（#5 のコメント）
 - #10: 取り込み先の呼ぶ行の SHA と subtree の commit が揃っているかを、CI で確かめる
-- #11: 共通の workflow が、古いリリース PR まで ready に戻す。直したら、lily と notify-slack の手順書の誤りも次の subtree pull の PR で直す
+- #11: 共通の workflow が、古いリリース PR まで ready に戻す。共通の workflow は直した（成功した run は前のリリース PR を閉じる）。
+  残りは取り込み先の手順書で、次の subtree pull の PR で直す
+  - lily と notify-slack の「作り直して戻す」の誤り
+  - wema-kake と notify-slack で、手で打ち直す前の `git fetch --force origin tag vX.Y.Z` が抜けている
+  - 全 repo の「古い PR は手で閉じる」の記述
 - #4: 打たれなかったタグを、次の run で打ち直す
 - #3: リリース PR のラベルを付け外ししたら、自動で作り直す
 - #8: booch と booch-win のリリースを tagpr に移す（版の正本が `VERSION`、タグは annotated）。

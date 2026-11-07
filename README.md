@@ -197,13 +197,29 @@ jobs:
   CHANGELOG section, which the publish then refuses. The draft cannot be merged; the next
   run that succeeds marks it ready again. Right after a release this happens on every push
   until a pull request adds an entry under `## [Unreleased]`.
+- **A successful run marks ready only the release pull request it rebuilt, and closes the
+  others.** tagpr looks only at the branch `tagpr-from-v<latest tag>`, so once a tag is made,
+  an older release pull request (say, the draft left behind when the run of a merge was
+  cancelled) is never rebuilt again. The run closes it with a comment and keeps its branch.
+  Do not reopen and merge it. Only a run that rebuilt the release pull request does this:
+  a run that makes a tag, or one that fails, leaves the old one open until the next
+  successful run on a push to `main`. Only pull requests with the label `tagpr` and a branch
+  starting `tagpr-from-v` are closed.
 - **The tag is made annotated.** tagpr makes a lightweight tag unless `tag.gpgSign` is set,
   and `git describe` without `--tags` skips lightweight tags. The workflow replaces it with
   an annotated tag on the same commit before starting `release-workflow`. To get the commit
   from the tag, use `$TAG^{commit}` (or follow the tag object in the API), not `$TAG` alone.
   If that step fails, the tag stays lightweight and `release-workflow` is not started, and
   re-running the run does not help (tagpr does not make the tag again). Make it again by
-  hand: `git tag -a -f -m "Release vX.Y.Z" vX.Y.Z 'vX.Y.Z^{commit}' && git push -f origin vX.Y.Z`.
+  hand. The tag is made in the workflow, so a local clone often lacks it, or holds an old tag
+  of the same name on another commit; fetch it first (`git cat-file -t vX.Y.Z` prints
+  `commit` for a lightweight tag):
+
+  ```bash
+  git fetch --force origin tag vX.Y.Z
+  git tag -a -f -m "Release vX.Y.Z" vX.Y.Z 'vX.Y.Z^{commit}' && git push -f origin vX.Y.Z
+  ```
+
   A tag pushed by hand starts `push: tags`; when `release-workflow` has that trigger, the
   push starts it, so do not also run `gh workflow run` (it would run twice on the tag).
 - **If only starting `release-workflow` fails** (the tag is made), do not re-run the tagpr
