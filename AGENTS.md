@@ -13,6 +13,7 @@
 `release-prepare.mjs --changelog-only` で CHANGELOG の処理だけを使える（Go の roji / notify-slack /
 hokora が使っている）。Tauri の pike / musql は `--cargo src-tauri` で Cargo.lock も揃える。
 CPAN の coveralls-perl は、版を Perl モジュールと `META.json` に持ち、`master` からリリースする。
+シェルのツールの booch / booch-win は、版をルートの `VERSION` に持つ（`--changelog-only`）。
 
 | ファイル | 呼ぶもの | 役割 |
 |---|---|---|
@@ -150,7 +151,7 @@ git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.
   取り込みを自分が作ったコミットから探すので、squash すると次の pull が壊れる
 - 取り込む PR は取り込み先の CHANGELOG に書かない（利用者に届かない）
 - 取り込み先: lily / wema / wema-kake（npm）、roji / notify-slack / hokora（Go）、
-  pike / musql（Tauri）、coveralls-perl（CPAN）。npm 以外は `--changelog-only` で呼ぶ
+  pike / musql（Tauri）、coveralls-perl（CPAN）、booch / booch-win（シェル）。npm 以外は `--changelog-only` で呼ぶ
   - roji は自分のラッパー（`scripts/release-prepare.sh`。CREDITS を置き換える）から呼ぶ
   - notify-slack と hokora は `.tagpr` の `postVersionCommand` から直接呼ぶ。hokora は tagpr の後の
     ジョブで `sdk/vX.Y.Z` のタグも同じコミットに打つ
@@ -176,14 +177,14 @@ issue #1）。`--changelog-only` が npm でない repo の入り口。
 issue を読まずに着手しない。進める順はユーザーと決める。
 
 - #13: `## [Unreleased]` が空で出すものが無いときは、tagpr を走らせず成功で終える。この repo の側は
-  入った（`release-pending.mjs`）。coveralls-perl は最初からこの版で入った。残りはほかの 8 repo への
-  subtree pull で、#8 の後にまとめて配る。全部に入ったら dotfiles の
+  入った（`release-pending.mjs`）。coveralls-perl / booch / booch-win は最初からこの版で入った。残りは
+  ほかの 8 repo への subtree pull。全部に入ったら dotfiles の
   セッションに知らせる（`gh-upkeep-status` が、空での赤を fail に出していた）
-  - 同じ配布で、閉じた #3 の分も入れる。coveralls-perl を含む 9 repo の呼ぶ側に `tagpr-label.yml` を足し、
+  - 同じ配布で、閉じた #3 の分も入れる。coveralls-perl を含む 9 repo の呼ぶ側に `tagpr-label.yml` を足し
+    （booch / booch-win は入っている）、
     取り込み先の手順書の「ラベルを変えたら `gh workflow run` で作り直す」を消す。足し方は README の
     「Rebuild the release pull request when its version label changes」
-  - 閉じた #4 の分（missed のジョブ）は subtree pull だけで入る。呼ぶ側の権限は今の 4 つのままでよい。
+  - 閉じた #4 の分（missed のジョブ）は subtree pull だけで入る。coveralls-perl は #3 / #4 より前の c2b813c で
+    入ったので、#3 と #4 の分は coveralls-perl を含む 9 repo へ subtree pull する。呼ぶ側の権限は今の 4 つのままでよい。
     取り込み先の手順書に「取り消されたマージの run は手で再実行する」とあれば、「次の run が再実行する。
     できなかったときだけ手で」に直す
-- #8: booch と booch-win のリリースを tagpr に移す（版の正本が `VERSION`、タグは annotated）。
-  `versionFile` で `VERSION` を確かめる処理は入った。残りは booch / booch-win の側の移行

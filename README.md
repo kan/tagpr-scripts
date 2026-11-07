@@ -11,7 +11,9 @@ which have no version file, use only the CHANGELOG part (`--changelog-only`). Th
 [pike](https://github.com/kan/pike) (`--cargo src-tauri`, with `package.json` too) also
 bring `Cargo.lock` along. The CPAN module
 [coveralls-perl](https://github.com/kan/coveralls-perl) (`--changelog-only`) keeps its
-version in a Perl module and `META.json`, and releases from `master`.
+version in a Perl module and `META.json`, and releases from `master`. The shell tools
+[booch](https://github.com/kan/booch) and [booch-win](https://github.com/kan/booch-win)
+(`--changelog-only`) keep their version in a `VERSION` file.
 
 | File | Run by | Does |
 |---|---|---|
