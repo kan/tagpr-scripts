@@ -223,8 +223,11 @@ jobs:
   - A label changed on a merged pull request (one listed in `minorLabels`, say) does not
     start it. Start `tagpr.yml` by hand then: `gh workflow run tagpr.yml`.
   - The rebuild queues behind a merge run like any other run. A label changed while a
-    merge run waits can replace that run (the same as a push); rerun the merge commit's
-    run to make the tag.
+    merge run waits can replace that run (the same as a push); the next run re-runs it to
+    make the tag (see "A missed tag is made by re-running the run of its merge").
+  - If the repository pins its actions with `actions.lock`, run `gh actions-lock` after
+    adding the file. It adds an empty entry for `tagpr-label.yml`; without it,
+    `gh actions-lock --verify` fails with "Not pinned".
 - **Keep Dependabot off the calling line.** Add this to the `github-actions` entry of
   `.github/dependabot.yml`:
 

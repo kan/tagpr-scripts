@@ -176,15 +176,5 @@ issue #1）。`--changelog-only` が npm でない repo の入り口。
 
 issue を読まずに着手しない。進める順はユーザーと決める。
 
-- #13: `## [Unreleased]` が空で出すものが無いときは、tagpr を走らせず成功で終える。この repo の側は
-  入った（`release-pending.mjs`）。coveralls-perl / booch / booch-win は最初からこの版で入った。残りは
-  ほかの 8 repo への subtree pull。全部に入ったら dotfiles の
-  セッションに知らせる（`gh-upkeep-status` が、空での赤を fail に出していた）
-  - 同じ配布で、閉じた #3 の分も入れる。coveralls-perl を含む 9 repo の呼ぶ側に `tagpr-label.yml` を足し
-    （booch / booch-win は入っている）、
-    取り込み先の手順書の「ラベルを変えたら `gh workflow run` で作り直す」を消す。足し方は README の
-    「Rebuild the release pull request when its version label changes」
-  - 閉じた #4 の分（missed のジョブ）は subtree pull だけで入る。coveralls-perl は #3 / #4 より前の c2b813c で
-    入ったので、#3 と #4 の分は coveralls-perl を含む 9 repo へ subtree pull する。呼ぶ側の権限は今の 4 つのままでよい。
-    取り込み先の手順書に「取り消されたマージの run は手で再実行する」とあれば、「次の run が再実行する。
-    できなかったときだけ手で」に直す
+- #14: 出すものが無い run で、残った draft のリリース PR を閉じる。#13 より前の版で落ちた run が
+  作った PR が、tagpr を走らせない run では閉じられずに残る（hokora#39、lily#52、roji#108）
