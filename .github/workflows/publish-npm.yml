@@ -100,7 +100,14 @@ jobs:
         id: tag
         env:
           TAG: ${{ github.ref_name }}
-        run: node scripts/tagpr/release-tag.mjs "$TAG" >>"$GITHUB_OUTPUT"
+        # release-tag.mjs は package.json が無くても通る（CPAN の repo のため）ので、ここで確かめる
+        run: |
+          set -euo pipefail
+          if [ ! -f package.json ]; then
+            echo "::error::There is no package.json at the root of the repository"
+            exit 1
+          fi
+          node scripts/tagpr/release-tag.mjs "$TAG" >>"$GITHUB_OUTPUT"
 
       # **Release の本文は CHANGELOG のその版の節。** 節が無ければ、npm へ出す前に止める（出した後に
       # 止まると、npm にはあるのに Release が無い版ができる）。リリース PR を通っていれば節はあるので、
