@@ -201,11 +201,11 @@ issue を読まずに着手しない。進める順はユーザーと決める�
   ワークフローを移し、各 repo で 1 回ずつ実際のリリースを通すこと。各 repo のリリースに合わせて
   進めるので、手順と確かめることは各 repo の issue に書いた（kan/lily#58、kan/wema#94、
   kan/wema-kake#74、kan/codemirror-lang-raku#24）。問題があれば、そこからこの repo に issue が立つ
-- #16 CPAN のモジュールの publish の workflow を共通にする。`publish-cpan.yml` を置き、coveralls-perl を
-  移して v1.1.0 を PAUSE へ送った（3 つのジョブが通った）。残りは次の 2 つ
-  - p5-smart-options / p5-web-service-mailgun の publish のワークフローを移し、各 repo で 1 回ずつ実際の
-    リリースを通すこと。`cpan` 環境の保護（デプロイできる ref）が coveralls-perl にしか無いのも揃える。
-    手順と確かめることは各 repo の issue に書いた（kan/coveralls-perl#100、kan/p5-smart-options#14、
-    kan/p5-web-service-mailgun#32）
-  - MetaCPAN の Web に版が出るのを確かめること。2026-11-10 の時点では、MetaCPAN の側の問題で、
-    移す前から新しい版が出ていない。**各 repo の issue は、MetaCPAN の Web で版を確かめてから閉じる**
+- #16 CPAN のモジュールの publish の workflow を共通にする。`publish-cpan.yml` を置き、coveralls-perl
+  （v1.1.0）と p5-smart-options（v1.0.1、`cpan` 環境の ref をタグ `v*` に絞った後）を移して出した。
+  どちらも MetaCPAN の Web で版を確かめた（kan/coveralls-perl#100、kan/p5-smart-options#14 は閉じた）。
+  残りは p5-web-service-mailgun の publish のワークフローを移し、実際のリリースを 1 回通すこと。
+  手順と確かめることは kan/p5-web-service-mailgun#32 に書いた。**この issue は、MetaCPAN の Web で
+  版を確かめてから閉じる**
+  - MetaCPAN は 2026-11-10 の 00:00〜06:30 UTC の間の release を取り込んでいない（p5-smart-options の
+    v1.0.0 は PAUSE と CPAN にはあるが MetaCPAN に無い）。MetaCPAN に出ないだけなら workflow の問題ではない
