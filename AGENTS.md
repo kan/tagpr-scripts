@@ -106,10 +106,11 @@ node --test 'test/*.node-test.mjs'
   （tagpr は main の上でしか動かないので、PR のブランチでは試せない）
 - `.github/workflows/publish-npm.yml`: 同じく取り込み先から呼ぶ reusable workflow。中の action は
   この repo の `actions.lock` が固定する。**取り込み先の Trusted Publisher は、呼ぶ側の workflow の
-  ファイル名で登録したままにする。** npm のドキュメントでは、照合するのは呼ぶ側の workflow の名前
-  （別の repo から呼ぶ場合は未確認。下の「残っている issue」の #15）。そうであれば、この workflow の
-  名前を変えても取り込み先の登録は変わらないが、取り込み先の呼ぶ側のファイル名を変えると publish が
-  落ちる。中身を変えるときは、sandbox のパッケージで実際に publish して確かめる
+  ファイル名で登録したままにする。** npm が照合するのは呼ぶ側の workflow の名前で、別の repo の
+  この workflow から publish しても通る。2026-11-10 に kan/tagpr-scripts-sandbox の `publish.yml` から
+  @kanf/sandbox 0.1.9 を出して確かめた。この workflow の名前を変えても取り込み先の登録は変わらないが、
+  取り込み先の呼ぶ側のファイル名を変えると publish が落ちる。中身を変えるときは、sandbox の
+  @kanf/sandbox で実際に publish して確かめる（リリース PR をマージする）
 - `.github/workflows/verify-lockfile.yml`: `actions.lock` が `uses:` と食い違っていないか、
   固定した commit を上流で検証できるかを、PR と main への push で確かめる
 - **action の固定は `.github/workflows/actions.lock`（`gh actions-lock` が作る）に任せる。**
@@ -186,8 +187,6 @@ issue #1）。`--changelog-only` が npm でない repo の入り口。
 
 issue を読まずに着手しない。進める順はユーザーと決める。
 
-- #15 npm パッケージの publish の workflow を共通にする。`publish-npm.yml` を置いた。残りは 2 つ
-  - 別の repo の reusable workflow から publish しても、npm の Trusted Publisher が呼ぶ側の
-    ファイル名で照合するかを、sandbox のパッケージで確かめる
-  - lily / wema / wema-kake / codemirror-lang-raku の publish のワークフローを移し、各 repo で
-    1 回ずつ実際のリリースを通す
+- #15 npm パッケージの publish の workflow を共通にする。`publish-npm.yml` を置き、sandbox で
+  publish まで通した。残りは、lily / wema / wema-kake / codemirror-lang-raku の publish の
+  ワークフローを移し、各 repo で 1 回ずつ実際のリリースを通すこと
