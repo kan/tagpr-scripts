@@ -116,7 +116,8 @@ node --test 'test/*.node-test.mjs'
 - `.github/workflows/publish-cpan.yml`: 同じく取り込み先から呼ぶ reusable workflow。中の action は
   この repo の `actions.lock` が固定する。**PAUSE には試験用のサーバーが無く、送ったものは取り消せない。**
   sandbox では試さず、CPAN の取り込み先の実際のリリースで確かめるとユーザーが決めた（#16）。
-  呼ぶ側の `cpan` 環境の secret が `upload` のジョブから読めるかは、まだ実際のリリースで確かめていない
+  呼ぶ側の `cpan` 環境の secret は、`secrets: inherit` を付けて呼べば `upload` のジョブから読める。
+  2026-11-10 に coveralls-perl の v1.1.0 で確かめた（付けない形は試していない）
 - `.github/workflows/verify-lockfile.yml`: `actions.lock` が `uses:` と食い違っていないか、
   固定した commit を上流で検証できるかを、PR と main への push で確かめる
 - **action の固定は `.github/workflows/actions.lock`（`gh actions-lock` が作る）に任せる。**
@@ -200,7 +201,11 @@ issue を読まずに着手しない。進める順はユーザーと決める�
   ワークフローを移し、各 repo で 1 回ずつ実際のリリースを通すこと。各 repo のリリースに合わせて
   進めるので、手順と確かめることは各 repo の issue に書いた（kan/lily#58、kan/wema#94、
   kan/wema-kake#74、kan/codemirror-lang-raku#24）。問題があれば、そこからこの repo に issue が立つ
-- #16 CPAN のモジュールの publish の workflow を共通にする。`publish-cpan.yml` を置いた。残りは、
-  coveralls-perl / p5-smart-options / p5-web-service-mailgun の publish のワークフローを移し、
-  実際のリリースで確かめること（sandbox では試さない）。`cpan` 環境の保護（デプロイできる ref）が
-  coveralls-perl にしか無いのも揃える
+- #16 CPAN のモジュールの publish の workflow を共通にする。`publish-cpan.yml` を置き、coveralls-perl を
+  移して v1.1.0 を PAUSE へ送った（3 つのジョブが通った）。残りは次の 2 つ
+  - p5-smart-options / p5-web-service-mailgun の publish のワークフローを移し、各 repo で 1 回ずつ実際の
+    リリースを通すこと。`cpan` 環境の保護（デプロイできる ref）が coveralls-perl にしか無いのも揃える。
+    手順と確かめることは各 repo の issue に書いた（kan/coveralls-perl#100、kan/p5-smart-options#14、
+    kan/p5-web-service-mailgun#32）
+  - MetaCPAN の Web に版が出るのを確かめること。2026-11-10 の時点では、MetaCPAN の側の問題で、
+    移す前から新しい版が出ていない。**各 repo の issue は、MetaCPAN の Web で版を確かめてから閉じる**
