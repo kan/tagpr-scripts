@@ -189,4 +189,6 @@ issue を読まずに着手しない。進める順はユーザーと決める�
 
 - #15 npm パッケージの publish の workflow を共通にする。`publish-npm.yml` を置き、sandbox で
   publish まで通した。残りは、lily / wema / wema-kake / codemirror-lang-raku の publish の
-  ワークフローを移し、各 repo で 1 回ずつ実際のリリースを通すこと
+  ワークフローを移し、各 repo で 1 回ずつ実際のリリースを通すこと。各 repo のリリースに合わせて
+  進めるので、手順と確かめることは各 repo の issue に書いた（kan/lily#58、kan/wema#94、
+  kan/wema-kake#74、kan/codemirror-lang-raku#24）。問題があれば、そこからこの repo に issue が立つ
