@@ -156,7 +156,10 @@ git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.
   効かず未署名になる
 - **同じ PR で、共通の workflow を呼ぶ行の SHA を、どれも取り込んだこの repo の commit に上げる。**
   呼ぶ行は tagpr.yml と tagpr-label.yml にあり、npm と CPAN の repo では publish のワークフローにもある
-  （p5-web-service-mailgun はまだ移していない。kan/p5-web-service-mailgun#32）。
+  （まだ移していない repo がある。npm は lily / wema-kake / codemirror-lang-raku で、kan/lily#58、
+  kan/wema-kake#74、kan/codemirror-lang-raku#24。CPAN は p5-web-service-mailgun で、
+  kan/p5-web-service-mailgun#32。各 repo のリリースに合わせて移し、問題が出たらそこからこの repo に
+  issue が立つ）。
   上げる先は、squash のコミットのメッセージにある `git-subtree-split` の SHA。取り込み先の squash や
   マージのコミットの SHA は、この repo に無いので使えない。
   呼ぶ行は `uses: kan/tagpr-scripts/.github/workflows/<workflow>@<SHA>`。手順は README の「Changing it」。
@@ -203,9 +206,4 @@ issue #1）。`--changelog-only` が npm でない repo の入り口。
 
 issue を読まずに着手しない。進める順はユーザーと決める。
 
-- #15 npm パッケージの publish の workflow を共通にする。`publish-npm.yml` を置き、sandbox で
-  publish まで通した。その後 `npm stage publish` に変え、sandbox の @kanf/sandbox 0.1.10 で stage、
-  Release、approve での公開まで確かめた（2026-11-12）。残りは、lily / wema / wema-kake / codemirror-lang-raku の
-  publish のワークフローを移し、各 repo で 1 回ずつ実際のリリースを通すこと。各 repo のリリースに合わせて
-  進めるので、手順と確かめることは各 repo の issue に書いた（kan/lily#58、kan/wema#94、
-  kan/wema-kake#74、kan/codemirror-lang-raku#24）。問題があれば、そこからこの repo に issue が立つ
+今は無い（2026-11-12 時点）。
