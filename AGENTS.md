@@ -149,7 +149,8 @@ git subtree pull -S --prefix=scripts/tagpr https://github.com/kan/tagpr-scripts.
 - **`-S` を付ける。** subtree は `commit-tree` でコミットを作るので、`commit.gpgsign` が
   効かず未署名になる
 - **同じ PR で、共通の workflow を呼ぶ行の SHA を、どれも取り込んだこの repo の commit に上げる。**
-  呼ぶ行は tagpr.yml と tagpr-label.yml にあり、npm と CPAN の repo では publish のワークフローにもある。
+  呼ぶ行は tagpr.yml と tagpr-label.yml にあり、npm と CPAN の repo では publish のワークフローにもある
+  （p5-web-service-mailgun はまだ移していない。kan/p5-web-service-mailgun#32）。
   上げる先は、squash のコミットのメッセージにある `git-subtree-split` の SHA。取り込み先の squash や
   マージのコミットの SHA は、この repo に無いので使えない。
   呼ぶ行は `uses: kan/tagpr-scripts/.github/workflows/<workflow>@<SHA>`。手順は README の「Changing it」。
@@ -201,11 +202,3 @@ issue を読まずに着手しない。進める順はユーザーと決める�
   ワークフローを移し、各 repo で 1 回ずつ実際のリリースを通すこと。各 repo のリリースに合わせて
   進めるので、手順と確かめることは各 repo の issue に書いた（kan/lily#58、kan/wema#94、
   kan/wema-kake#74、kan/codemirror-lang-raku#24）。問題があれば、そこからこの repo に issue が立つ
-- #16 CPAN のモジュールの publish の workflow を共通にする。`publish-cpan.yml` を置き、coveralls-perl
-  （v1.1.0）と p5-smart-options（v1.0.1、`cpan` 環境の ref をタグ `v*` に絞った後）を移して出した。
-  どちらも MetaCPAN の Web で版を確かめた（kan/coveralls-perl#100、kan/p5-smart-options#14 は閉じた）。
-  残りは p5-web-service-mailgun の publish のワークフローを移し、実際のリリースを 1 回通すこと。
-  手順と確かめることは kan/p5-web-service-mailgun#32 に書いた。**この issue は、MetaCPAN の Web で
-  版を確かめてから閉じる**
-  - MetaCPAN は 2026-11-10 の 00:00〜06:30 UTC の間の release を取り込んでいない（p5-smart-options の
-    v1.0.0 は PAUSE と CPAN にはあるが MetaCPAN に無い）。MetaCPAN に出ないだけなら workflow の問題ではない
