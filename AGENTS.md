@@ -116,7 +116,9 @@ node --test 'test/*.node-test.mjs'
   - **npm へは `npm stage publish` で出し、公開はユーザーが `npm stage approve` で手で行う**
     （2026-11-12 にユーザーが決めた。npm の推奨）。取り込み先の Trusted Publisher は stage publish
     だけを許し、direct publish は許さない。**`npm publish` に戻さない。** OIDC のトークンは
-    `npm stage list` を呼べないので、stage 済みで未承認の版を workflow からは見分けられない
+    `npm stage list` を呼べないので、stage 済みで未承認の版を workflow からは見分けられない。
+    stage publish だけを許した Trusted Publisher から OIDC で stage でき、provenance も付くことは
+    2026-11-12 に sandbox の @kanf/sandbox 0.1.10 で確かめた
 - `.github/workflows/publish-cpan.yml`: 同じく取り込み先から呼ぶ reusable workflow。中の action は
   この repo の `actions.lock` が固定する。**PAUSE には試験用のサーバーが無く、送ったものは取り消せない。**
   sandbox では試さず、CPAN の取り込み先の実際のリリースで確かめるとユーザーが決めた（#16）。
@@ -202,8 +204,8 @@ issue #1）。`--changelog-only` が npm でない repo の入り口。
 issue を読まずに着手しない。進める順はユーザーと決める。
 
 - #15 npm パッケージの publish の workflow を共通にする。`publish-npm.yml` を置き、sandbox で
-  publish まで通した。その後 `npm stage publish` に変えたが、sandbox ではまだ確かめていない
-  （取り込み先へ入れる前に確かめる）。残りは、lily / wema / wema-kake / codemirror-lang-raku の
+  publish まで通した。その後 `npm stage publish` に変え、sandbox の @kanf/sandbox 0.1.10 で stage、
+  Release、approve での公開まで確かめた（2026-11-12）。残りは、lily / wema / wema-kake / codemirror-lang-raku の
   publish のワークフローを移し、各 repo で 1 回ずつ実際のリリースを通すこと。各 repo のリリースに合わせて
   進めるので、手順と確かめることは各 repo の issue に書いた（kan/lily#58、kan/wema#94、
   kan/wema-kake#74、kan/codemirror-lang-raku#24）。問題があれば、そこからこの repo に issue が立つ
