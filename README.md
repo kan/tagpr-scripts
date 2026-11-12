@@ -384,9 +384,10 @@ The release branch does not have to be `main`. Set `releaseBranch` in `.tagpr` a
 
 ### The npm publish workflow
 
-`.github/workflows/publish-npm.yml` here is a reusable workflow that publishes a version
-tag to npm with Trusted Publishing and then creates its GitHub release. Call it from the
-workflow that `tagpr.yml` starts as `release-workflow`:
+`.github/workflows/publish-npm.yml` here is a reusable workflow that stages a version tag
+on npm with Trusted Publishing (`npm stage publish`) and then creates its GitHub release.
+The staged version is not public until a maintainer approves it, with 2FA. Call it from
+the workflow that `tagpr.yml` starts as `release-workflow`:
 
 ```yaml
 name: Publish
@@ -413,30 +414,43 @@ jobs:
   `verify-subtree.mjs` checks this line too.
 - **Keep the name of the calling file.** npm's Trusted Publisher checks the name of the
   calling workflow, not of this one, so the Trusted Publisher stays registered with the
-  repository's own file (`publish.yml`, say). Let it allow direct publishing: with only
-  "npm stage publish" allowed, `npm publish` fails with "403 OIDC permission denied".
+  repository's own file (`publish.yml`, say). Let it allow "npm stage publish" only, not
+  direct publishing, so that nothing from the workflow is public without an approval.
+  Without "npm stage publish" allowed, the stage fails with "403 OIDC permission denied".
+  A Trusted Publisher made for the earlier `npm publish` allows direct publishing only:
+  switch it on npmjs.com before pulling this version.
+- **Approve the staged version to publish it.** The summary of the run shows the stage ID:
+  look at it with `npm stage view <stage ID>` (or `npm stage download <stage ID>`), then
+  `npm stage approve <stage ID>`, which asks for 2FA. `npm stage list <name>` finds the
+  ID too. `npm stage reject <stage ID>` drops it; then delete the GitHub release by hand.
+  The dist-tag (`latest` or `next`) is fixed when it is staged.
 - **Keep the `concurrency` in the calling workflow**, one run per tag that is never
-  cancelled: stopped halfway, a version could be on npm with no release. This workflow
+  cancelled: stopped halfway, a version could be staged on npm with no release. This workflow
   has none of its own, so the two do not deadlock.
 - The jobs are split by what they may do. Dependency code (the install scripts of
   `npm ci`, the checks, the build) runs only in `build`, which can write nothing.
-  `publish` (`id-token: write`) publishes the tarball from `build` with no checkout and no
-  `npm ci`; `release` (`contents: write`) only makes the release.
+  `publish` (`id-token: write`) stages the tarball from `build` with no checkout and no
+  `npm ci`; `release` (`contents: write`) only makes the release, right after the stage
+  (before the approval).
 - `build` runs only on a `refs/tags/v*` ref. Before `npm ci`, it checks that the tag is
   `v` + the version of `package.json` and of every `versionFile` of `.tagpr`, and that the
   tag's commit is on `releaseBranch` of `.tagpr` (`release-tag.mjs`), and that `release-notes.mjs` finds the tag's section of
   `CHANGELOG.md`.
-- **A prerelease (`vX.Y.Z-rc.1`) goes to npm under the dist-tag `next`**, so it does not
+- **A prerelease (`vX.Y.Z-rc.1`) is staged under the dist-tag `next`**, so it does not
   become `latest`, and its GitHub release is marked as a prerelease. `package.json` and
   every `versionFile` of `.tagpr` have to hold that version (`X.Y.Z-rc.1`) on the tagged
   commit, as for any other tag.
 - A version that `npm view` cannot look up for a reason other than E404 (a registry error,
-  say) fails the run instead of being published: whether it is already out is not known.
+  say) fails the run instead of being staged: whether it is already out is not known.
 - The files of `release-files` are attached by their names, so two of them with the same
   name fail `build`, before anything is published.
-- A version already on npm is not published again, so "Re-run all jobs" goes on to the
-  release. A release that is already there gets the notes, the title and the files again.
-  When only `release` fails, re-run it alone: `gh run rerun <run ID> --failed`.
+- A version already public on npm is not staged again, so "Re-run all jobs" after the
+  approval goes on to the release. A release that is already there gets the notes, the
+  title and the files again.
+- **Before the approval, re-run only the failed jobs: `gh run rerun <run ID> --failed`.**
+  A staged version looks absent to `npm view`, and the workflow cannot list staged
+  versions (`npm stage list` does not take the OIDC token), so "Re-run all jobs" stages it
+  again and the registry refuses it.
 - The release's title is the tag (`vX.Y.Z`), and its text is the tag's section of
   `CHANGELOG.md`.
 - Inputs:
@@ -446,7 +460,7 @@ jobs:
     `TARBALL`. For checks of what is published, such as installing it into a template.
   - `pack-ignore-scripts`: pass `--ignore-scripts` to `npm pack`, to pack the build that
     `check` made instead of building again in `prepare` (default `false`).
-  - `access`: passed to `npm publish --access` (`public` for a public scoped package).
+  - `access`: passed to `npm stage publish --access` (`public` for a public scoped package).
     Not passed when empty.
   - `release-files`: files to attach to the release, one path per line from the root,
     made by `check` (wema's `dist/wema.html`, say).

@@ -32,7 +32,7 @@ CPAN の coveralls-perl / p5-smart-options / p5-web-service-mailgun は、版を
 | `test/verify-subtree.node-test.mjs` | `node --test` | `verify-subtree.mjs` のテスト。一時ディレクトリに upstream と取り込み先の repo を作る |
 | `.github/workflows/tagpr.yml` | 取り込み先の tagpr.yml が `uses:` で呼ぶ（reusable workflow。この repo では動かない） | 出すものが無ければ（`release-pending.mjs`）tagpr を走らせず成功で終え、残った draft のリリース PR を閉じる（`workflow_dispatch` の起動では必ず走らせる。#14）。その前に、タグが打たれなかったリリース PR のマージの run の tagpr のジョブが cancelled なら再実行し、終わるのを待って呼ぶ側の workflow を起動し直す。その run では tagpr を走らせない（#4）。tagpr を走らせ、タグを打ったら annotated に打ち直し、取り込み先の publish / release をそのタグで `workflow_dispatch` する。tagpr が落ちた run ではリリース PR を draft にし、成功した run ではその run のリリース PR だけを ready に戻して、前のリリース PR を閉じる。入力は README の「The tagpr workflow」 |
 | `.github/workflows/tagpr-label.yml` | 取り込み先の tagpr-label.yml が `pull_request_target`（`labeled` / `unlabeled`）で呼ぶ（reusable workflow） | 開いているリリース PR のラベルが付け外しされたら、その PR を draft にし、取り込み先の tagpr.yml をリリースのブランチで `workflow_dispatch` して作り直させる（#3） |
-| `.github/workflows/publish-npm.yml` | npm の取り込み先の publish のワークフロー（tagpr.yml の `release-workflow`）が `uses:` で呼ぶ（reusable workflow） | バージョンのタグを npm へ出し、GitHub Release を作る（#15）。ジョブを権限で `build` / `publish` / `release` に分け、依存のコードは `build` でしか走らせない。タグと `package.json` の版、`.tagpr` の `releaseBranch` の上にあるか、CHANGELOG の節を `npm ci` の前に確かめる。プレリリースは dist-tag `next`。npm にある版は出し直さず、Release が既にあれば書き直す。repo ごとの違い（検査のコマンド、添付するファイルなど）は入力で渡す。入力は README の「The npm publish workflow」 |
+| `.github/workflows/publish-npm.yml` | npm の取り込み先の publish のワークフロー（tagpr.yml の `release-workflow`）が `uses:` で呼ぶ（reusable workflow） | バージョンのタグを npm へ `npm stage publish` で stage し、GitHub Release を作る（#15）。公開はユーザーが `npm stage approve` で手で行う。ジョブを権限で `build` / `publish` / `release` に分け、依存のコードは `build` でしか走らせない。タグと `package.json` の版、`.tagpr` の `releaseBranch` の上にあるか、CHANGELOG の節を `npm ci` の前に確かめる。プレリリースは dist-tag `next`。npm で公開済みの版は stage し直さず、Release が既にあれば書き直す。repo ごとの違い（検査のコマンド、添付するファイルなど）は入力で渡す。入力は README の「The npm publish workflow」 |
 | `.github/workflows/publish-cpan.yml` | CPAN の取り込み先の publish のワークフロー（tagpr.yml の `release-workflow`）が `uses:` で呼ぶ（reusable workflow） | バージョンのタグを PAUSE へ送り、GitHub Release を作る（#16）。ジョブを権限で `build` / `upload` / `release` に分け、依存のコードは `build` でしか走らせない。PAUSE の認証情報は呼ぶ側の repo の `cpan` 環境にあり、`upload` だけが読む。Release が既にあるタグ、プレリリースのタグは止める（PAUSE は同じファイルを二度受け付けない）。repo ごとの違い（テストのコマンド、追加で入れるモジュール）は入力で渡す。入力は README の「The CPAN publish workflow」 |
 
 package.json は無い。依存も無い。
@@ -113,6 +113,10 @@ node --test 'test/*.node-test.mjs'
   @kanf/sandbox 0.1.9 を出して確かめた。この workflow の名前を変えても取り込み先の登録は変わらないが、
   取り込み先の呼ぶ側のファイル名を変えると publish が落ちる。中身を変えるときは、sandbox の
   @kanf/sandbox で実際に publish して確かめる（リリース PR をマージする）
+  - **npm へは `npm stage publish` で出し、公開はユーザーが `npm stage approve` で手で行う**
+    （2026-11-12 にユーザーが決めた。npm の推奨）。取り込み先の Trusted Publisher は stage publish
+    だけを許し、direct publish は許さない。**`npm publish` に戻さない。** OIDC のトークンは
+    `npm stage list` を呼べないので、stage 済みで未承認の版を workflow からは見分けられない
 - `.github/workflows/publish-cpan.yml`: 同じく取り込み先から呼ぶ reusable workflow。中の action は
   この repo の `actions.lock` が固定する。**PAUSE には試験用のサーバーが無く、送ったものは取り消せない。**
   sandbox では試さず、CPAN の取り込み先の実際のリリースで確かめるとユーザーが決めた（#16）。
@@ -198,7 +202,8 @@ issue #1）。`--changelog-only` が npm でない repo の入り口。
 issue を読まずに着手しない。進める順はユーザーと決める。
 
 - #15 npm パッケージの publish の workflow を共通にする。`publish-npm.yml` を置き、sandbox で
-  publish まで通した。残りは、lily / wema / wema-kake / codemirror-lang-raku の publish の
-  ワークフローを移し、各 repo で 1 回ずつ実際のリリースを通すこと。各 repo のリリースに合わせて
+  publish まで通した。その後 `npm stage publish` に変えたが、sandbox ではまだ確かめていない
+  （取り込み先へ入れる前に確かめる）。残りは、lily / wema / wema-kake / codemirror-lang-raku の
+  publish のワークフローを移し、各 repo で 1 回ずつ実際のリリースを通すこと。各 repo のリリースに合わせて
   進めるので、手順と確かめることは各 repo の issue に書いた（kan/lily#58、kan/wema#94、
   kan/wema-kake#74、kan/codemirror-lang-raku#24）。問題があれば、そこからこの repo に issue が立つ
